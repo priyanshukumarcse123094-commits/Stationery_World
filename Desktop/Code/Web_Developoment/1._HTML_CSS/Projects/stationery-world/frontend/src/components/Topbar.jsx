@@ -63,5 +63,3 @@ const Topbar = ({ variant = 'admin', wishlistCount = 0, cartCount = 0, onToggleS
 };
 
 export default Topbar;
-
-export default Topbar;
