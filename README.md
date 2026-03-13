@@ -63,6 +63,18 @@ Or use the VS Code task: `Ctrl/Cmd + Shift + B` → **Full Stack: Start Both Ser
 
 ---
 
+## 📤 How to Upload Files from Your Disk
+
+New to Git or want to update the repo with files you've edited locally?  
+See the step-by-step guide: **[UPLOADING_FILES.md](UPLOADING_FILES.md)**
+
+It covers:
+- GitHub website drag-and-drop (no tools needed)
+- VS Code Source Control panel
+- Git command line (`git add → commit → push`)
+
+---
+
 ## 📁 Project Structure
 
 ```
