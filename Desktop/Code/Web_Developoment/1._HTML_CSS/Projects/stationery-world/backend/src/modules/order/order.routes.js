@@ -5,7 +5,8 @@ const {
   getOrderById,
   getSelfOrders,
   getAllOrders,
-  updateOrderStatus
+  updateOrderStatus,
+  getMonthlyLimitStatus
 } = require('./order.controller');
 const { authMiddleware, adminMiddleware } = require('../user/user.middleware');
 
@@ -60,6 +61,9 @@ router.post('/', authMiddleware, createOrder);
 
 // Get self orders (for logged-in admin -> type=SELF)
 router.get('/self', authMiddleware, getSelfOrders);
+
+// Get monthly limit status for the current user
+router.get('/monthly-limit', authMiddleware, getMonthlyLimitStatus);
 
 // Admin: list all orders (others)
 router.get('/', authMiddleware, adminMiddleware, getAllOrders);

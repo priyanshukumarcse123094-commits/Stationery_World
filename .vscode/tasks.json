@@ -1,0 +1,138 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    // ─── Backend tasks ────────────────────────────────────────────────────
+    {
+      "label": "Backend: Install Dependencies",
+      "type": "shell",
+      "command": "npm install",
+      "options": {
+        "cwd": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend"
+      },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Backend: Start Dev (nodemon)",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "starting",
+          "endsPattern": "running on port"
+        }
+      },
+      "group": { "kind": "build", "isDefault": false },
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Backend: Prisma Generate",
+      "type": "shell",
+      "command": "npm run prisma:generate",
+      "options": {
+        "cwd": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend"
+      },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Backend: Prisma Migrate Dev",
+      "type": "shell",
+      "command": "npm run prisma:migrate",
+      "options": {
+        "cwd": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend"
+      },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Backend: Prisma Studio",
+      "type": "shell",
+      "command": "npm run prisma:studio",
+      "options": {
+        "cwd": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend"
+      },
+      "isBackground": true,
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Backend: Seed Database",
+      "type": "shell",
+      "command": "npm run seed",
+      "options": {
+        "cwd": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend"
+      },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+
+    // ─── Frontend tasks ───────────────────────────────────────────────────
+    {
+      "label": "Frontend: Install Dependencies",
+      "type": "shell",
+      "command": "npm install",
+      "options": {
+        "cwd": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/frontend"
+      },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Frontend: Start Dev (Vite)",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/frontend"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE",
+          "endsPattern": "Local:"
+        }
+      },
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Frontend: Build",
+      "type": "shell",
+      "command": "npm run build",
+      "options": {
+        "cwd": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/frontend"
+      },
+      "group": { "kind": "build", "isDefault": false },
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Frontend: Lint",
+      "type": "shell",
+      "command": "npm run lint",
+      "options": {
+        "cwd": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/frontend"
+      },
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+
+    // ─── Full-stack task ──────────────────────────────────────────────────
+    {
+      "label": "Full Stack: Start Both Servers",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "Backend: Start Dev (nodemon)",
+        "Frontend: Start Dev (Vite)"
+      ],
+      "group": { "kind": "build", "isDefault": false },
+      "presentation": { "reveal": "always", "panel": "shared" }
+    }
+  ]
+}

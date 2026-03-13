@@ -1,0 +1,78 @@
+{
+  // ─── Editor ──────────────────────────────────────────────────────────────
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.wordWrap": "on",
+  "editor.minimap.enabled": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.suggestSelection": "first",
+  "editor.quickSuggestions": {
+    "strings": true
+  },
+
+  // ─── Files ───────────────────────────────────────────────────────────────
+  "files.autoSave": "onFocusChange",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.associations": {
+    "*.env": "dotenv",
+    "*.env.*": "dotenv",
+    "*.prisma": "prisma"
+  },
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.DS_Store": true,
+    "**/dist": true,
+    "**/dist-ssr": true,
+    "**/.prisma": true
+  },
+
+  // ─── Search ──────────────────────────────────────────────────────────────
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/dist-ssr": true,
+    "**/package-lock.json": true
+  },
+
+  // ─── ESLint ──────────────────────────────────────────────────────────────
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "eslint.workingDirectories": [
+    "./Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/frontend",
+    "./Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend"
+  ],
+
+  // ─── Prettier ────────────────────────────────────────────────────────────
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[prisma]": {
+    "editor.defaultFormatter": "Prisma.prisma"
+  },
+
+  // ─── GitHub Copilot ──────────────────────────────────────────────────────
+  "github.copilot.enable": {
+    "*": true,
+    "plaintext": false,
+    "markdown": true,
+    "scminput": false
+  },
+
+  // ─── Terminal ────────────────────────────────────────────────────────────
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+
+  // ─── Explorer ────────────────────────────────────────────────────────────
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false
+}
