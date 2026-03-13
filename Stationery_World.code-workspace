@@ -2,11 +2,11 @@
   "folders": [
     {
       "name": "🛒 Frontend (React + Vite)",
-      "path": "./Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/frontend"
+      "path": "./frontend"
     },
     {
       "name": "⚙️  Backend (Express + Prisma)",
-      "path": "./Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend"
+      "path": "./backend"
     },
     {
       "name": "📁 Root",

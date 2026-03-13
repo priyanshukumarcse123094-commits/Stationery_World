@@ -58,3 +58,9 @@ coverage/
 *.njsproj
 *.sln
 *.sw?
+
+# ─── Prevent accidental commit of deep local paths ───────────────────────────
+Desktop/
+uploads/
+*.zip
+*.tar.gz

@@ -21,15 +21,7 @@ export default function ForgotPassword() {
   };
 
   const handleVerify = () => {
-    useEffect(() => {
-      const savedOtp = sessionStorage.getItem("otp");
-      console.log("Verify Page OTP:", savedOtp);
-
-      if (!savedOtp) {
-        navigate("/forgot-password");
-      }
-    }, []);
-
+    const savedOtp = sessionStorage.getItem("otp");
     console.log("Verifying OTP:", otp, "against", savedOtp);
     if(!savedOtp) return alert("No OTP found. Please request a new one.");
     if (otp === savedOtp) {
@@ -66,9 +58,8 @@ export default function ForgotPassword() {
               onChange={(e) => setEmailOrPhone(e.target.value)}
             />
             <button onClick={() => {
-              handleSendOTP
+              handleSendOTP()
               setStep(2)
-              
               }}>Send Code</button>
           </>
         )}
@@ -79,8 +70,9 @@ export default function ForgotPassword() {
             <OtpInput value={otp} onChange={setOtp} />
 
             <button onClick={() => {
+              handleVerify()
               setStep(3)
-              handleVerify}}>Verify</button>
+              }}>Verify</button>
           </>
         )}
 

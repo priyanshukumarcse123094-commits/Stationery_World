@@ -14,7 +14,7 @@ This works for uploading individual files or entire folders without installing a
    👉 https://github.com/priyanshukumarcse123094-commits/Stationery_World
 
 2. Navigate to the folder where you want to place the file  
-   (e.g. click into `Desktop/Code/.../frontend/src/pages/`)
+   (e.g. click into `frontend/src/pages/` or `backend/src/modules/`)
 
 3. Click the **Add file** button (top-right of the file list)
 
@@ -55,17 +55,11 @@ code Stationery_World.code-workspace
    - Windows: `C:\Users\YourName\Stationery_World\`
    - Mac/Linux: `/home/YourName/Stationery_World/`
 
-   The frontend and backend source code live deep inside that folder:
+   The frontend and backend source code live directly in the repo root:
    ```
    Stationery_World/
-   └── Desktop/
-       └── Code/
-           └── Web_Developoment/
-               └── 1._HTML_CSS/
-                   └── Projects/
-                       └── stationery-world/
-                           ├── frontend/   ← React app goes here
-                           └── backend/    ← Node.js API goes here
+   ├── frontend/   ← React app goes here
+   └── backend/    ← Node.js API goes here
    ```
    Copy your files into whichever subfolder they belong to.
 

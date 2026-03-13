@@ -49,7 +49,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 
 // Serve uploaded files (public/uploads)
-app.use('/uploads', express.static(path.join(__dirname, '..', '..', 'public', 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 // Uploads route
 app.use('/api/uploads', uploadsRoutes);
 
