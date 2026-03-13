@@ -253,7 +253,7 @@ const updateProfile = async (req, res) => {
     console.log('Update profile request for user:', req.user.id);
     console.log('Request body:', { ...req.body, password: req.body.password ? '[HIDDEN]' : undefined });
 
-        const { name, phone, password, addressLine1, addressLine2, city, state, postalCode, country, photoUrl } = req.body;
+        const { name, phone, password, addressLine1, addressLine2, city, state, postalCode, country, photoUrl, monthlyLimit } = req.body;
     const userId = req.user.id;
 
     // Build update data object
@@ -300,6 +300,19 @@ const updateProfile = async (req, res) => {
     if (country !== undefined) updateData.country = country || null;
     if (photoUrl !== undefined) updateData.photoUrl = photoUrl || null;
 
+    // Monthly spending limit (null = no limit; positive number = cap in store currency)
+    if (monthlyLimit !== undefined) {
+      if (monthlyLimit === null || monthlyLimit === '') {
+        updateData.monthlyLimit = null;
+      } else {
+        const limitVal = parseFloat(monthlyLimit);
+        if (isNaN(limitVal) || limitVal < 0) {
+          return res.status(400).json({ success: false, message: 'monthlyLimit must be a non-negative number or null.' });
+        }
+        updateData.monthlyLimit = limitVal;
+      }
+    }
+
     // Check if there's anything to update
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
@@ -326,6 +339,7 @@ const updateProfile = async (req, res) => {
         postalCode: true,
         country: true,
         photoUrl: true,
+        monthlyLimit: true,
         createdAt: true,
         updatedAt: true
       }

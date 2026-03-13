@@ -5,6 +5,84 @@ const ORDER_TYPES = [ { id: 'SELF', label: 'Self Orders' }, { id: 'OTHERS', labe
 
 const STATUS_OPTIONS = ['PENDING','PROCESSING','SHIPPED','DELIVERED','CANCELLED'];
 
+function MonthlyLimitWidget({ useMock }) {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchLimit() {
+      setLoading(true);
+      setError(null);
+      try {
+        if (useMock) {
+          // Dev mock: simulate no limit set yet
+          setStatus({ limit: 5000, spent: 3200, remaining: 1800, isFull: false, percentUsed: 64 });
+          setLoading(false);
+          return;
+        }
+        const res = await fetch('/api/orders/monthly-limit');
+        if (!res.ok) {
+          const text = await res.text();
+          setError(`API error ${res.status}: ${text.slice(0, 200)}`);
+        } else {
+          const data = await res.json();
+          if (data?.success) setStatus(data.data);
+          else setError(data?.message || 'Failed to load monthly limit');
+        }
+      } catch (err) {
+        setError(err.message || 'Network error');
+      }
+      setLoading(false);
+    }
+    fetchLimit();
+  }, [useMock]);
+
+  if (loading) return <div className="card" style={{ marginBottom: 12, padding: '10px 16px' }}>Loading monthly limit…</div>;
+  if (error) return null; // Don't block the rest of the page
+
+  const { limit, spent, remaining, isFull, percentUsed } = status || {};
+
+  if (limit === null || limit === undefined) {
+    return (
+      <div className="card" style={{ marginBottom: 12, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 18 }}>💡</span>
+        <span className="muted" style={{ fontSize: 14 }}>No monthly spending limit set. You can configure one via your profile settings.</span>
+      </div>
+    );
+  }
+
+  const barColor = isFull ? '#ef4444' : percentUsed >= 80 ? '#f59e0b' : '#22c55e';
+
+  return (
+    <div className="card" style={{ marginBottom: 16, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <h4 style={{ margin: 0 }}>Monthly Spending Limit</h4>
+        {isFull
+          ? <span style={{ background: '#fef2f2', color: '#dc2626', borderRadius: 6, padding: '2px 10px', fontSize: 13, fontWeight: 600 }}>⛔ Limit Reached</span>
+          : <span style={{ background: '#f0fdf4', color: '#16a34a', borderRadius: 6, padding: '2px 10px', fontSize: 13, fontWeight: 600 }}>✅ Within Limit</span>
+        }
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ height: 10, background: '#e5e7eb', borderRadius: 999, overflow: 'hidden', marginBottom: 10 }}>
+        <div style={{ width: `${percentUsed}%`, height: '100%', background: barColor, transition: 'width 0.4s' }} />
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+        <span>Spent: <strong>₹{spent.toFixed(2)}</strong></span>
+        <span>{percentUsed}% used</span>
+        <span>Limit: <strong>₹{limit.toFixed(2)}</strong></span>
+      </div>
+      {!isFull && (
+        <div style={{ marginTop: 6, fontSize: 13, color: '#6b7280' }}>
+          Remaining: <strong>₹{remaining.toFixed(2)}</strong>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Orders() {
   const [type, setType] = useState('SELF');
   const [orders, setOrders] = useState([]);
@@ -98,6 +176,9 @@ export default function Orders() {
           </select>
         </div>
       </div>
+
+      {/* Monthly spending limit widget — shown only for SELF orders */}
+      {type === 'SELF' && <div style={{ marginTop: 16 }}><MonthlyLimitWidget useMock={useMock} /></div>}
 
       {loading && <div>Loading...</div>}
 

@@ -165,10 +165,57 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+// Get monthly limit status for the current user
+// Returns: { limit, spent, remaining, isFull, percentUsed }
+// "spent" is calculated from SELF orders in DELIVERED status for the current calendar month.
+const getMonthlyLimitStatus = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Fetch the user's configured monthly limit
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { monthlyLimit: true } });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const limit = user.monthlyLimit ?? null;
+
+    // Compute the start and end of the current calendar month (UTC)
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const monthEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+    // Sum totalCp of all DELIVERED SELF orders placed by this user this month
+    const result = await prisma.order.aggregate({
+      where: {
+        type: 'SELF',
+        placedById: userId,
+        status: 'DELIVERED',
+        createdAt: { gte: monthStart, lt: monthEnd }
+      },
+      _sum: { totalCp: true }
+    });
+
+    const spent = result._sum.totalCp ?? 0;
+
+    const remaining   = limit !== null ? Math.max(0, limit - spent) : null;
+    const isFull      = limit !== null ? spent >= limit : false;
+    const percentUsed = limit !== null && limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : null;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Monthly limit status retrieved',
+      data: { limit, spent, remaining, isFull, percentUsed }
+    });
+  } catch (error) {
+    console.error('Get monthly limit status error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   createOrder,
   getOrderById,
   getSelfOrders,
   getAllOrders,
-  updateOrderStatus
+  updateOrderStatus,
+  getMonthlyLimitStatus
 };

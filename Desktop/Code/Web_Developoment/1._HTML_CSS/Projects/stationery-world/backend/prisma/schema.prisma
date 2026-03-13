@@ -28,6 +28,8 @@ model User {
   country       String?
   photoUrl      String?
 
+  monthlyLimit  Float?   // Optional monthly spending cap for SELF orders (in store currency)
+
   passwordHash  String
   role          Role     @default(CUSTOMER)
   isActive      Boolean  @default(true)

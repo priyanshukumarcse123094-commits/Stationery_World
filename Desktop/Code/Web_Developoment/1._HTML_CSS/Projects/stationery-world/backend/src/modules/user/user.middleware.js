@@ -44,6 +44,7 @@ const authMiddleware = async (req, res, next) => {
         postalCode: true,
         country: true,
         photoUrl: true,
+        monthlyLimit: true,
         createdAt: true,
         updatedAt: true
       }
