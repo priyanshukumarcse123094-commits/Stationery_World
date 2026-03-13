@@ -1,0 +1,60 @@
+# ─── Operating System ────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ─── Node / npm ──────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnp/
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+
+# ─── Build outputs ───────────────────────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+.vite/
+
+# ─── Environment & secrets ───────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.env
+
+# ─── VS Code — shared config IS committed; personal overrides are NOT ─────────
+# Allow: settings.json, extensions.json, launch.json, tasks.json
+.vscode/sftp.json
+.vscode/.history/
+
+# ─── JetBrains IDEs ──────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ─── Prisma ──────────────────────────────────────────────────────────────────
+.prisma/
+
+# ─── Coverage / test artifacts ───────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ─── Misc ────────────────────────────────────────────────────────────────────
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

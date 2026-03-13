@@ -1,0 +1,63 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    // ─── Backend: Node.js (Express) ──────────────────────────────────────
+    {
+      "name": "Backend: Start Dev Server",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend/src/app.js",
+      "cwd": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend",
+      "envFile": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend/.env",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--nolazy"],
+      "restart": true,
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "name": "Backend: Debug (Attach)",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+
+    // ─── Frontend: Chrome + Vite ─────────────────────────────────────────
+    {
+      "name": "Frontend: Open in Chrome",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/frontend/src",
+      "sourceMapPathOverrides": {
+        "webpack:///src/*": "${webRoot}/*"
+      }
+    },
+
+    // ─── Full Stack: Backend + Frontend together ──────────────────────────
+    {
+      "name": "Full Stack: Backend + Frontend",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend/src/app.js",
+      "cwd": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend",
+      "envFile": "${workspaceFolder}/Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend/.env",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "running on port ([0-9]+)",
+        "uriFormat": "http://localhost:%s"
+      }
+    }
+  ],
+
+  "compounds": [
+    {
+      "name": "Full Stack: Debug All",
+      "configurations": ["Backend: Start Dev Server", "Frontend: Open in Chrome"]
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+{
+  "folders": [
+    {
+      "name": "🛒 Frontend (React + Vite)",
+      "path": "./Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/frontend"
+    },
+    {
+      "name": "⚙️  Backend (Express + Prisma)",
+      "path": "./Desktop/Code/Web_Developoment/1._HTML_CSS/Projects/stationery-world/backend"
+    },
+    {
+      "name": "📁 Root",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "files.autoSave": "onFocusChange",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.associations": {
+      "*.env": "dotenv",
+      "*.env.*": "dotenv",
+      "*.prisma": "prisma"
+    },
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.DS_Store": true,
+      "**/dist": true,
+      "**/.prisma": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/package-lock.json": true
+    },
+    "github.copilot.enable": {
+      "*": true,
+      "plaintext": false,
+      "markdown": true,
+      "scminput": false
+    },
+    "eslint.validate": [
+      "javascript",
+      "javascriptreact"
+    ]
+  },
+  "extensions": {
+    "recommendations": [
+      "GitHub.copilot",
+      "GitHub.copilot-chat",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "Prisma.prisma",
+      "mikestead.dotenv",
+      "eamodio.gitlens",
+      "mhutchie.git-graph",
+      "humao.rest-client",
+      "burkeholland.simple-react-snippets",
+      "christian-kohler.npm-intellisense",
+      "PKief.material-icon-theme"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Backend: Start Dev Server",
+        "type": "node",
+        "request": "launch",
+        "program": "${workspaceFolder:⚙️  Backend (Express + Prisma)}/src/app.js",
+        "cwd": "${workspaceFolder:⚙️  Backend (Express + Prisma)}",
+        "envFile": "${workspaceFolder:⚙️  Backend (Express + Prisma)}/.env",
+        "runtimeArgs": ["--nolazy"],
+        "console": "integratedTerminal",
+        "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+      },
+      {
+        "name": "Frontend: Open in Chrome",
+        "type": "chrome",
+        "request": "launch",
+        "url": "http://localhost:5173",
+        "webRoot": "${workspaceFolder:🛒 Frontend (React + Vite)}/src"
+      }
+    ],
+    "compounds": [
+      {
+        "name": "Full Stack: Backend + Frontend",
+        "configurations": [
+          "Backend: Start Dev Server",
+          "Frontend: Open in Chrome"
+        ]
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Frontend: Start Dev (Vite)",
+        "type": "shell",
+        "command": "npm run dev",
+        "options": { "cwd": "${workspaceFolder:🛒 Frontend (React + Vite)}" },
+        "isBackground": true,
+        "group": { "kind": "build", "isDefault": true },
+        "presentation": { "reveal": "always", "panel": "dedicated" }
+      },
+      {
+        "label": "Backend: Start Dev (nodemon)",
+        "type": "shell",
+        "command": "npm run dev",
+        "options": { "cwd": "${workspaceFolder:⚙️  Backend (Express + Prisma)}" },
+        "isBackground": true,
+        "group": "build",
+        "presentation": { "reveal": "always", "panel": "dedicated" }
+      },
+      {
+        "label": "Full Stack: Start Both",
+        "dependsOrder": "parallel",
+        "dependsOn": ["Frontend: Start Dev (Vite)", "Backend: Start Dev (nodemon)"],
+        "group": { "kind": "build", "isDefault": false },
+        "presentation": { "reveal": "always", "panel": "shared" }
+      }
+    ]
+  }
+}

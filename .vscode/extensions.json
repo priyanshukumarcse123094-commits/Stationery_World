@@ -1,0 +1,39 @@
+{
+  "recommendations": [
+    // GitHub Copilot
+    "GitHub.copilot",
+    "GitHub.copilot-chat",
+
+    // JavaScript / TypeScript
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+
+    // React / JSX
+    "burkeholland.simple-react-snippets",
+    "dsznajder.es7-react-js-snippets",
+
+    // Node.js / Backend
+    "christian-kohler.npm-intellisense",
+    "eg2.vscode-npm-script",
+
+    // Prisma ORM
+    "Prisma.prisma",
+
+    // REST API testing
+    "humao.rest-client",
+
+    // Git
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+
+    // Environment files
+    "mikestead.dotenv",
+
+    // Editor quality-of-life
+    "streetsidesoftware.code-spell-checker",
+    "oderwat.indent-rainbow",
+    "christian-kohler.path-intellisense",
+    "wayou.vscode-todo-highlight",
+    "PKief.material-icon-theme"
+  ]
+}
