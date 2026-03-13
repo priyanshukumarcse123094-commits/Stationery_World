@@ -28,7 +28,13 @@ export default function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       
       {/* Admin Routes */}
-      <Route path="/admin" element={<AdminLayout />}>
+      import { SidebarProvider } from "../context/SidebarContext";
+
+      <Route path="/admin" element={
+        <SidebarProvider>
+          <AdminLayout />
+        </SidebarProvider>
+      }>
         <Route index element={<Dashboard />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="reports" element={<Reports />} />

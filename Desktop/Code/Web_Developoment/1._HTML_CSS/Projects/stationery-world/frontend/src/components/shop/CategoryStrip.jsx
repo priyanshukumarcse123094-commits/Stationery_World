@@ -1,11 +1,17 @@
 import React from 'react';
 
-export default function CategoryStrip({ categories = [], onSelect }) {
+export default function CategoryStrip({ categories = [], selected, onSelect }) {
   return (
     <div className="category-strip">
       <div className="cat-scroll">
-        {categories.map((c) => (
-          <button key={c} className="cat-chip" onClick={() => onSelect && onSelect(c)}>{c}</button>
+        {categories.map((category) => (
+          <button 
+            key={category} 
+            className={`cat-chip ${selected === category ? 'active' : ''}`}
+            onClick={() => onSelect && onSelect(category)}
+          >
+            {category}
+          </button>
         ))}
       </div>
     </div>

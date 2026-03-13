@@ -3,6 +3,20 @@ const prisma = require('../../../prisma/client');
 // Valid categories enum
 const VALID_CATEGORIES = ['STATIONERY', 'BOOKS', 'TOYS'];
 
+// Include creator info in product queries
+const productInclude = {
+  images: true,
+  createdBy: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true
+    }
+  }
+};
+
+// Get all products with filters (Public)
 // Get all products with filters (Public)
 const getAllProducts = async (req, res) => {
   try {
@@ -67,6 +81,10 @@ const getAllProducts = async (req, res) => {
 
     const products = await prisma.product.findMany({
       where,
+      include: {
+        images: true  // ✅ CRITICAL: Include images
+      },
+      include: productInclude,
       orderBy: {
         createdAt: 'desc'
       }
@@ -266,9 +284,45 @@ const createProduct = async (req, res) => {
         baseSellingPrice: sellingPrice,
         bargainable: bargainable !== undefined ? bargainable : true,
         lowStockThreshold: threshold,
-        totalStock: quantityAdded
+        totalStock: quantityAdded,
+        createdById: req.user.id  // Track who created the product
       }
     });
+
+    // create bargain config if provided and product is bargainable
+    if (bargainable !== false && req.body.bargainConfig) {
+      const cfg = req.body.bargainConfig;
+      await prisma.bargainConfig.create({
+        data: {
+          productId: newProduct.id,
+          tier1Price: parseFloat(cfg.tier1Price) || 0,
+          tier2Price: parseFloat(cfg.tier2Price) || 0,
+          tier3Price: parseFloat(cfg.tier3Price) || 0,
+          maxAttempts: parseInt(cfg.maxAttempts) || 1,
+          bargainExpiryDate: cfg.bargainExpiryDate ? new Date(cfg.bargainExpiryDate) : null
+        }
+      });
+    }
+
+    // create bulk discounts if any
+    if (Array.isArray(req.body.bulkDiscounts)) {
+      const discounts = req.body.bulkDiscounts
+        .map(d => {
+          const minQty = parseInt(d.minQty);
+          const discount = parseFloat(d.discount);
+          if (!minQty || !discount) return null;
+          return {
+            productId: newProduct.id,
+            minQty,
+            discount,
+            unit: d.unit || 'RUPEES'
+          };
+        })
+        .filter(Boolean);
+      if (discounts.length > 0) {
+        await prisma.bulkDiscount.createMany({ data: discounts });
+      }
+    }
 
     // Create product images if provided
     if (images.length > 0) {
@@ -298,7 +352,10 @@ const createProduct = async (req, res) => {
     const profitMargin = ((sellingPrice - cost) / sellingPrice * 100).toFixed(2);
 
     // Return product with latest data
-    const created = await prisma.product.findUnique({ where: { id: newProduct.id }, include: { images: true } });
+    const created = await prisma.product.findUnique({
+      where: { id: newProduct.id },
+      include: { images: true, bargainConfig: true, bulkDiscounts: true }
+    });
 
     return res.status(201).json({
       success: true,
@@ -353,7 +410,9 @@ const updateProduct = async (req, res) => {
       baseSellingPrice,
       bargainable,
       lowStockThreshold,
-      isActive
+      isActive,
+      bargainConfig,
+      bulkDiscounts
     } = req.body;
 
     // Build update data
@@ -417,6 +476,7 @@ const updateProduct = async (req, res) => {
     if (bargainable !== undefined) {
       updateData.bargainable = bargainable;
     }
+    // if price changed and bargainConfig exists maybe update tiers? will handle below
 
     if (lowStockThreshold !== undefined) {
       const threshold = parseInt(lowStockThreshold);
@@ -433,8 +493,12 @@ const updateProduct = async (req, res) => {
       updateData.isActive = isActive;
     }
 
+    // ===================================================
+    // After building updateData, handle bargainConfig & bulkDiscounts separately below
+    // ===================================================
+
     // Check if there's anything to update
-    if (Object.keys(updateData).length === 0) {
+    if (Object.keys(updateData).length === 0 && !bargainConfig && !bulkDiscounts) {
       return res.status(400).json({
         success: false,
         message: 'No fields to update.'
@@ -449,14 +513,59 @@ const updateProduct = async (req, res) => {
 
     console.log('Product updated successfully:', productId);
 
+    // -- bargain config handling --
+    if (bargainConfig) {
+      const existingCfg = await prisma.bargainConfig.findUnique({ where: { productId } });
+      const cfgData = {
+        tier1Price: parseFloat(bargainConfig.tier1Price) || 0,
+        tier2Price: parseFloat(bargainConfig.tier2Price) || 0,
+        tier3Price: parseFloat(bargainConfig.tier3Price) || 0,
+        maxAttempts: parseInt(bargainConfig.maxAttempts) || 1,
+        bargainExpiryDate: bargainConfig.bargainExpiryDate ? new Date(bargainConfig.bargainExpiryDate) : null,
+        isActive: bargainConfig.isActive !== undefined ? bargainConfig.isActive : true
+      };
+      if (existingCfg) {
+        await prisma.bargainConfig.update({ where: { id: existingCfg.id }, data: cfgData });
+      } else {
+        await prisma.bargainConfig.create({ data: { ...cfgData, productId } });
+      }
+    }
+
+    // -- bulk discounts handling --
+    if (Array.isArray(bulkDiscounts)) {
+      await prisma.bulkDiscount.deleteMany({ where: { productId } });
+      const discounts = bulkDiscounts
+        .map(d => {
+          const minQty = parseInt(d.minQty);
+          const discount = parseFloat(d.discount);
+          if (!minQty || !discount) return null;
+          return {
+            productId,
+            minQty,
+            discount,
+            unit: d.unit || 'RUPEES'
+          };
+        })
+        .filter(Boolean);
+      if (discounts.length > 0) {
+        await prisma.bulkDiscount.createMany({ data: discounts });
+      }
+    }
+
+    // re-fetch to include relations
+    const refreshed = await prisma.product.findUnique({
+      where: { id: productId },
+      include: { images: true, bargainConfig: true, bulkDiscounts: true }
+    });
+
     // Calculate profit margin
-    const profitMargin = ((updatedProduct.baseSellingPrice - updatedProduct.costPrice) / updatedProduct.baseSellingPrice * 100).toFixed(2);
+    const profitMargin = ((refreshed.baseSellingPrice - refreshed.costPrice) / refreshed.baseSellingPrice * 100).toFixed(2);
 
     return res.status(200).json({
       success: true,
       message: 'Product updated successfully.',
       data: {
-        ...updatedProduct,
+        ...refreshed,
         profitMargin: `${profitMargin}%`
       }
     });
@@ -663,20 +772,14 @@ const getLowStockProducts = async (req, res) => {
   try {
     console.log('Get low stock products request');
 
-    // Retrieve products where totalStock is less than or equal to lowStockThreshold
+    // Fetch all active products, filter in memory (Prisma doesn't support column-column comparison in where)
     const products = await prisma.product.findMany({
-      where: {
-        isActive: true,
-        totalStock: { lte: prisma.raw('"lowStockThreshold"') } // placeholder for comparison
-      },
-      orderBy: {
-        totalStock: 'asc'
-      },
-      include: { images: true }
+      where: { isActive: true },
+      orderBy: { totalStock: 'asc' },
+      include: { images: true },
+      include: productInclude
     });
 
-    // Note: Prisma currently doesn't support comparing two columns in a simple where clause.
-    // We'll do the filtering in-memory for now (acceptable for small datasets). If needed, replace with raw query.
     const filtered = products.filter(p => p.totalStock <= p.lowStockThreshold);
 
     console.log('Low stock products retrieved:', filtered.length);
@@ -696,6 +799,78 @@ const getLowStockProducts = async (req, res) => {
   }
 };
 
+const notifyMeWhenAvailable = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email } = req.body;
+    const userId = req.user.id;
+
+    console.log('Notify request for product:', id, 'User:', userId);
+
+    const productId = parseInt(id);
+    if (isNaN(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid product ID.'
+      });
+    }
+
+    // Check if product exists
+    const product = await prisma.product.findUnique({
+      where: { id: productId }
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found.'
+      });
+    }
+
+    // Check if already registered
+    const existing = await prisma.productNotification.findUnique({
+      where: {
+        productId_userId: {
+          productId,
+          userId
+        }
+      }
+    });
+
+    if (existing) {
+      return res.status(200).json({
+        success: true,
+        message: 'You are already registered for notifications.',
+        data: existing
+      });
+    }
+
+    // Create notification request
+    const notification = await prisma.productNotification.create({
+      data: {
+        productId,
+        userId,
+        email: email || req.user.email
+      }
+    });
+
+    console.log('Notification registered:', notification.id);
+
+    return res.status(201).json({
+      success: true,
+      message: 'You will be notified when this product is back in stock!',
+      data: notification
+    });
+  } catch (error) {
+    console.error('Notify me error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error while registering notification.'
+    });
+  }
+};
+
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -706,5 +881,6 @@ module.exports = {
   toggleProductStatus,
   getLowStockProducts,
   restockProduct,
-  getInventoryLogs
+  getInventoryLogs,
+  notifyMeWhenAvailable
 };

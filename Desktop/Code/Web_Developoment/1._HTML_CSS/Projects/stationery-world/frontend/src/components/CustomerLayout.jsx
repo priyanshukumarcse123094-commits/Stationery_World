@@ -12,8 +12,12 @@ export default function CustomerLayout() {
     <div className={`customer-layout ${showSidebar ? 'sidebar-open' : ''}`}>
       <CustomerSidebar />
       <div className="customer-main">
-        <Topbar variant="customer" onToggleSidebar={() => setShowSidebar(s => !s)} />
-        <main className="customer-content" onClick={() => setShowSidebar(false)}>
+        <Topbar
+          variant="customer"
+          sidebarOpen={showSidebar}
+          onToggleSidebar={() => setShowSidebar(s => !s)}
+        />
+        <main className="customer-content" onClick={() => showSidebar && setShowSidebar(false)}>
           <Outlet />
         </main>
       </div>
