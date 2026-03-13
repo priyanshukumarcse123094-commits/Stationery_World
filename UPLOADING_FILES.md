@@ -100,19 +100,29 @@ git clone https://github.com/priyanshukumarcse123094-commits/Stationery_World.gi
 cd Stationery_World
 ```
 
+### Before running `git add .` — check what will be staged
+
+Running `git add .` stages **everything** that has changed, including things you don't want (see [What NOT to commit](#-what-not-to-commit) below). Always preview first:
+
+```bash
+git status          # see which files are new/changed
+git diff --stat     # see a summary of changes
+```
+
 ### Uploading / updating files
 
 ```bash
 # Step 1: Copy your updated files into the repo folder on your disk
 # (just paste them in using File Explorer / Finder — no command needed)
 
-# Step 2: Check what has changed
+# Step 2: Preview what has changed — do this before staging!
 git status
 
-# Step 3: Stage the files you want to upload
-git add path/to/your/file.js        # stage a specific file
-# OR
-git add .                           # stage everything that changed
+# Step 3: Stage only your source code (NOT node_modules, .env, etc.)
+git add path/to/your/file.js        # stage a specific file (safest)
+git add src/                        # stage an entire source folder
+# OR, if you are sure nothing bad is untracked:
+git add .
 
 # Step 4: Commit with a message
 git commit -m "Add updated frontend pages"
@@ -122,6 +132,23 @@ git push origin main
 ```
 
 Your files are now live on GitHub ✅
+
+---
+
+## ⚠️ What NOT to commit
+
+These files **must never** be committed. They bloat the repo, may expose secrets, and can cause CI failures:
+
+| Files / folders | Why |
+|-----------------|-----|
+| `node_modules/` | Hundreds of MB of packages — recreated with `npm install` |
+| `.env` | Contains your database password and JWT secret |
+| `*.zip`, `*.tar.gz` | Large binary archives with no diff value |
+| `uploads/` (product images) | Runtime-generated content |
+| `.DS_Store` | macOS junk files |
+| `*.dylib.node`, `*.wasm` | Platform-specific binary engine files |
+
+The `.gitignore` files in this repo already block all of these. If they appear in `git status` as untracked, that means git is correctly ignoring them — do **not** force-add them with `git add -f`.
 
 ---
 
@@ -138,7 +165,33 @@ Your files are now live on GitHub ✅
 
 ## Troubleshooting
 
-### "Permission denied" or "Authentication failed" when pushing
+### ❌ "remote: Permission to … denied" or error 403
+
+This means your local `origin` remote is pointing to the **wrong repository**.
+
+**Check your current remote:**
+```bash
+git remote -v
+```
+
+If it shows a URL for an org/repo you don't have write access to (e.g. `Coding-gurukul-8/Stationery_World`), fix it:
+
+```bash
+git remote set-url origin https://github.com/priyanshukumarcse123094-commits/Stationery_World.git
+```
+
+Confirm the fix:
+```bash
+git remote -v
+# should now show: priyanshukumarcse123094-commits/Stationery_World.git
+```
+
+Then push again:
+```bash
+git push origin main
+```
+
+### ❌ "Permission denied" or "Authentication failed" when pushing
 
 You need to sign in to GitHub in VS Code or configure Git credentials:
 
@@ -146,7 +199,33 @@ You need to sign in to GitHub in VS Code or configure Git credentials:
 - **Git CLI**: Use a [Personal Access Token](https://github.com/settings/tokens) as your password,  
   or run `gh auth login` if you have the [GitHub CLI](https://cli.github.com/) installed.
 
-### "Your branch is behind 'origin/main'"
+### ❌ I accidentally committed `node_modules/`, `.env`, or `.DS_Store`
+
+Remove them from git's tracking (they stay on your disk but git stops watching them):
+
+```bash
+# Remove node_modules
+git rm --cached -r node_modules
+
+# Remove .env file
+git rm --cached .env
+
+# Remove .DS_Store files
+git rm --cached -r --ignore-unmatch $(git ls-files --ignored --exclude-standard)
+
+# Remove a specific zip backup
+git rm --cached Backend_21_Feb_2026_23_27.zip
+
+# Commit the removals
+git commit -m "Remove accidentally committed build artifacts and secrets"
+
+# Push
+git push origin main
+```
+
+> ⚠️ **Important:** If you committed a real `.env` file with database passwords or JWT secrets, treat those secrets as **compromised**. Change your database password and generate a new `JWT_SECRET` immediately.
+
+### ❌ "Your branch is behind 'origin/main'"
 
 Someone else pushed changes since you last pulled. Run:
 
@@ -156,7 +235,7 @@ git pull origin main
 git push origin main
 ```
 
-### I accidentally uploaded the wrong file — how do I remove it?
+### ❌ I accidentally uploaded the wrong file — how do I remove it?
 
 ```bash
 git rm path/to/wrong/file.js
