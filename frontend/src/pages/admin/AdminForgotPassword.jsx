@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./VerifyOTP.css";
+import { API_BASE_URL } from '../../config/constants';
+const API = API_BASE_URL;
+
 
 // ─── Password rules (mirrors backend passwordValidator) ───────────────────────
 const PW_RULES = [
@@ -72,7 +75,7 @@ export default function AdminForgotPassword() {
     setLoading(true); clearMessages();
 
     try {
-      const res  = await fetch('http://localhost:3000/api/user/forgot-password', {
+      const res  = await fetch(`${API}/api/user/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.toLowerCase().trim() })
@@ -80,8 +83,16 @@ export default function AdminForgotPassword() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to send OTP');
 
-      setMessage(`OTP sent to ${email}. Check your inbox!`);
       sessionStorage.setItem('adminEmail', email);
+
+      // Development fallback: OTP is returned in the response when email delivery failed
+      if (data.data?.otp) {
+        setOtp(data.data.otp);
+        setMessage('Email delivery failed in dev mode. OTP has been auto-filled.');
+      } else {
+        setMessage(`OTP sent to ${email}. Check your inbox!`);
+      }
+
       setStep(2);
     } catch (err) {
       setError(err.message || 'Failed to send OTP');
@@ -96,7 +107,7 @@ export default function AdminForgotPassword() {
     setLoading(true); clearMessages();
 
     try {
-      const res  = await fetch('http://localhost:3000/api/user/verify-otp', {
+      const res  = await fetch(`${API}/api/user/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.toLowerCase().trim(), otp })
@@ -131,7 +142,7 @@ export default function AdminForgotPassword() {
     setLoading(true);
 
     try {
-      const res  = await fetch('http://localhost:3000/api/user/reset-password', {
+      const res  = await fetch(`${API}/api/user/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.toLowerCase().trim(), otp, newPassword: password })
