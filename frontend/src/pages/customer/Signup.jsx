@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../../config/constants";
 import "./customer-auth.css";
 
 const PW_RULES = [
@@ -85,7 +86,7 @@ export default function Signup() {
       Object.entries(form).forEach(([k, v]) => { if (k !== 'confirmPassword') fd.append(k, v); });
       if (photoFile) fd.append('photo', photoFile);
 
-      const res  = await fetch('/api/user/signup', { method: 'POST', body: fd });
+      const res  = await fetch(`${API_BASE_URL}/api/user/signup`, { method: 'POST', body: fd });
       const data = await res.json();
 
       if (data?.success) {
