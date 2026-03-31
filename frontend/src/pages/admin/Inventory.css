@@ -195,6 +195,76 @@
   white-space: nowrap;
 }
 
+/* ── View tab controls ────────────────────────────────────────── */
+.view-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+.view-controls-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.view-search {
+  flex: 1;
+  min-width: 220px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--bg-subtle);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--tr), box-shadow var(--tr), background var(--tr);
+}
+.view-search::placeholder { color: var(--text-faint); }
+.view-search:focus {
+  border-color: var(--gold);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--gold-glow);
+}
+
+.sort-select {
+  height: 38px;
+  padding: 0 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--tr), box-shadow var(--tr);
+  color-scheme: light dark;
+}
+.sort-select:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-glow);
+}
+.sort-select.sort-preset { min-width: 180px; }
+
+.sort-arrow {
+  margin-left: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
 .inv-table-wrapper {
   background: var(--surface);
   border-radius: var(--radius-lg);
@@ -435,6 +505,13 @@
 .inv-table tbody tr:last-child td { border-bottom: none; }
 .inv-table tbody tr { transition: background var(--tr); }
 .inv-table tbody tr:hover td { background: var(--bg-subtle); color: var(--text-primary); }
+.inv-table tr.low-stock-row td { background: rgba(234, 88, 12, 0.06); }
+.inv-table tr.low-stock-row:hover td { background: rgba(234, 88, 12, 0.1); }
+.inv-table tr.low-stock-row .inv-product-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 
 /* Product name cell */
 .inv-table td.product-cell {

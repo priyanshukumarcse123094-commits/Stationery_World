@@ -299,7 +299,7 @@ function ViewTab({ inventoryList }) {
         </div>
       ) : (
         <div className="inv-table-wrapper">
-          <table className="reports-table">
+          <table className="inv-table">
             <thead>
               <tr>
                 <th onClick={() => toggleSort('name')} className={sortKey === 'name' ? 'sorted' : ''}>
