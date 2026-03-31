@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../../config/constants";
+import { compressImageFile, isSupportedImageType } from "../../utils/imageCompression";
 import "./customer-auth.css";
 
 const PW_RULES = [
@@ -47,6 +48,7 @@ export default function Signup() {
 
   const [photoFile,    setPhotoFile]    = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
   const [showPw,       setShowPw]       = useState(false);
   const [showCf,       setShowCf]       = useState(false);
   const [loading,      setLoading]      = useState(false);
@@ -54,16 +56,27 @@ export default function Signup() {
 
   const change = e => { setError(''); setForm(f => ({ ...f, [e.target.name]: e.target.value })); };
 
-  function handlePhotoChange(e) {
+  async function handlePhotoChange(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) { setError('Please select an image file'); return; }
-    if (file.size > 5 * 1024 * 1024)    { setError('Image must be under 5MB'); return; }
-    setPhotoFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => setPhotoPreview(reader.result);
-    reader.readAsDataURL(file);
+    if (!isSupportedImageType(file)) { setError('Invalid file type. Only JPG, PNG, and WEBP are allowed.'); return; }
+    if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5MB'); return; }
     setError('');
+    setPhotoLoading(true);
+    try {
+      const compressed = await compressImageFile(file, { maxSizeKB: 100, maxWidthOrHeight: 1280 });
+      setPhotoFile(compressed);
+      const reader = new FileReader();
+      reader.onloadend = () => setPhotoPreview(reader.result);
+      reader.readAsDataURL(compressed);
+    } catch (err) {
+      console.error('Photo compression failed:', err);
+      setError(err.message || 'Image compression failed');
+      setPhotoFile(null);
+      setPhotoPreview(null);
+    } finally {
+      setPhotoLoading(false);
+    }
   }
 
   const removePhoto = () => { setPhotoFile(null); setPhotoPreview(null); };
