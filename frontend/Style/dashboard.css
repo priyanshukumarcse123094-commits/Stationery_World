@@ -108,6 +108,12 @@
   box-shadow: 0 1px 0 var(--border), 0 4px 16px rgba(26,22,18,0.04);
   transition: background var(--tr-slow), border-color var(--tr-slow);
 }
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
 .topbar-brand {
   display: inline-flex;
   align-items: center;
@@ -254,21 +260,45 @@ span[style*="dc3545"], span[style*="3498db"] {
 /* Responsive */
 @media (max-width: 768px) {
   .admin-layout:has(.sidebar:not(.closed)) .admin-main { margin-left: 0; }
-  .sidebar { transform: translateX(-110%); box-shadow: none; }
-  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 32px rgba(10, 8, 6, 0.45); }
+  /* Keep a slim visible rail on mobile so the minimized sidebar is discoverable */
+  .sidebar {
+    transform: translateX(calc(-100% + 44px));
+    box-shadow: none;
+  }
+  .sidebar.closed {
+    transform: translateX(calc(-100% + 44px));
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 32px rgba(10, 8, 6, 0.45);
+  }
   .admin-content { padding: 18px 16px 48px; }
-  .topbar { padding: 0 24px; }
-  .topbar-search { display: none; }
+  .topbar {
+    padding: 10px 16px;
+    flex-wrap: wrap;
+    height: auto;
+    gap: 12px;
+    align-items: center;
+  }
+  .topbar-left {
+    flex: 1;
+  }
   .topbar-brand-text { display: none; }
-  .topbar-actions[data-mobile-collapse="true"] {
-    gap: 0;
+  .topbar-search {
+    display: block;
+    order: 3;
+    width: 100%;
+    max-width: none;
   }
-  .topbar-actions[data-mobile-collapse="true"] > .icon-link,
-  .topbar-actions[data-mobile-collapse="true"] .topbar-icons,
-  .topbar-actions[data-mobile-collapse="true"] .topbar-username,
-  .topbar-actions[data-mobile-collapse="true"] .topbar-admin {
-    display: none !important;
+  .topbar-search .search-shortcut { display: none; }
+  .topbar-actions {
+    order: 2;
+    margin-left: auto;
+    gap: 8px;
   }
+  .topbar-icons { gap: 8px; }
+  .topbar-username { display: none; }
+  .topbar-admin img { width: 32px; height: 32px; }
 }
 
 /* Mobile backdrop — shown on mobile when admin sidebar is open */
