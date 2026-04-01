@@ -195,10 +195,10 @@ const Topbar = ({
         {/* Customer quick links */}
         {!isAdmin && (
           <div className="topbar-icons" role="navigation" aria-label="Customer quick actions">
-            <Link to="/customer/wishlist" title="Wishlist" className="icon-link">
+            <Link to="/customer/wishlist" title="Wishlist" className="icon-link wishlist-link">
               ❤️ <span className="count">{wishlistCount}</span>
             </Link>
-            <Link to="/customer/cart" title="Cart" className="icon-link">
+            <Link to="/customer/cart" title="Cart" className="icon-link cart-link">
               🛒 <span className="count">{cartCount}</span>
             </Link>
           </div>
