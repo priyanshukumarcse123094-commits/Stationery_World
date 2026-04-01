@@ -260,8 +260,18 @@ span[style*="dc3545"], span[style*="3498db"] {
 /* Responsive */
 @media (max-width: 768px) {
   .admin-layout:has(.sidebar:not(.closed)) .admin-main { margin-left: 0; }
-  .sidebar { transform: translateX(-110%); box-shadow: none; }
-  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 32px rgba(10, 8, 6, 0.45); }
+  /* Keep a slim visible rail on mobile so the minimized sidebar is discoverable */
+  .sidebar {
+    transform: translateX(calc(-100% + 44px));
+    box-shadow: none;
+  }
+  .sidebar.closed {
+    transform: translateX(calc(-100% + 44px));
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 32px rgba(10, 8, 6, 0.45);
+  }
   .admin-content { padding: 18px 16px 48px; }
   .topbar {
     padding: 10px 16px;
