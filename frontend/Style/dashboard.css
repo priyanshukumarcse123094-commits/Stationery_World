@@ -258,7 +258,17 @@ span[style*="dc3545"], span[style*="3498db"] {
   .sidebar.open { transform: translateX(0); box-shadow: 4px 0 32px rgba(10, 8, 6, 0.45); }
   .admin-content { padding: 18px 16px 48px; }
   .topbar { padding: 0 24px; }
-  .topbar-search { max-width: 200px; }
+  .topbar-search { display: none; }
+  .topbar-brand-text { display: none; }
+  .topbar-actions[data-mobile-collapse="true"] {
+    gap: 0;
+  }
+  .topbar-actions[data-mobile-collapse="true"] > .icon-link,
+  .topbar-actions[data-mobile-collapse="true"] .topbar-icons,
+  .topbar-actions[data-mobile-collapse="true"] .topbar-username,
+  .topbar-actions[data-mobile-collapse="true"] .topbar-admin {
+    display: none !important;
+  }
 }
 
 /* Mobile backdrop — shown on mobile when admin sidebar is open */
