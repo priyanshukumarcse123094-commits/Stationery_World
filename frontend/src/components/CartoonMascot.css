@@ -5,6 +5,10 @@
   opacity: 0.92;
   transform: translateZ(0);
   cursor: grab;
+  /* Prevent browser scroll/zoom from interfering with touch drag */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .mascot-wrapper.grabbing {
@@ -98,5 +102,13 @@
   0%, 100% { transform: translateY(0) rotate(0deg); }
   45% { transform: translateY(-4px) rotate(2deg); }
   65% { transform: translateY(-6px) rotate(-2deg); }
+}
+
+/* Smaller mascot on mobile so it doesn't block content */
+@media (max-width: 768px) {
+  .mascot-floating {
+    width: 72px;
+    height: 72px;
+  }
 }
 

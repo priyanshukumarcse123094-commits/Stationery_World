@@ -46,6 +46,7 @@ const Topbar = ({
   const [open, setOpen] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  const mobileMenuRef = useRef(null);
   const searchRef   = useRef(null);
   const navigate    = useNavigate();
 
@@ -57,6 +58,7 @@ const Topbar = ({
   const userName  = user?.name || 'User';
   const isAdmin   = variant === 'admin';
   const isOpen    = isAdmin ? sidebarOpen : customerSidebarOpen;
+  const isMobile  = typeof window !== 'undefined' && window.innerWidth <= 768;
 
   useEffect(() => {
     if (variant === 'customer' && user?.role === 'ADMIN') {
@@ -74,8 +76,10 @@ const Topbar = ({
 
   useEffect(() => {
     const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setOpen(false);
-      if (searchRef.current   && !searchRef.current.contains(e.target))   setShowSearchDropdown(false);
+      const clickedInsideDropdown = dropdownRef.current && dropdownRef.current.contains(e.target);
+      const clickedInsideMobileMenu = mobileMenuRef.current && mobileMenuRef.current.contains(e.target);
+      if (!clickedInsideDropdown && !clickedInsideMobileMenu) setOpen(false);
+      if (searchRef.current && !searchRef.current.contains(e.target)) setShowSearchDropdown(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -113,7 +117,10 @@ const Topbar = ({
     <header className="topbar" data-variant={variant}>
 
       {/* Left: toggle + brand */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}
+        ref={mobileMenuRef}
+      >
         <button
           className={`sidebar-toggle${isOpen ? ' open' : ''}`}
           aria-label={isOpen ? 'Close sidebar' : 'Open sidebar'}
@@ -124,7 +131,21 @@ const Topbar = ({
             <span className={`toggle-icon toggle-icon--close${isOpen ? '' : ' hidden'}`}><CloseIcon /></span>
           </span>
         </button>
-        <span className="topbar-brand">
+        <span
+          className="topbar-brand"
+          onClick={() => {
+            if (isMobile) setOpen((prev) => !prev);
+          }}
+          role={isMobile ? 'button' : undefined}
+          tabIndex={isMobile ? 0 : undefined}
+          onKeyDown={(e) => {
+            if (!isMobile) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setOpen((prev) => !prev);
+            }
+          }}
+        >
           <Logo size={26} />
           <span className="topbar-brand-text">
             {variant === 'customer' ? 'Stationery World' : 'Stationery World'}
@@ -164,7 +185,7 @@ const Topbar = ({
       </div>
 
       {/* Right: actions */}
-      <div className="topbar-actions" ref={dropdownRef}>
+      <div className="topbar-actions" ref={dropdownRef} data-mobile-collapse={isMobile ? 'true' : 'false'}>
 
         {/* Theme toggle */}
         <button className="icon-link" onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} style={{ fontSize: 0 }}>
@@ -190,7 +211,11 @@ const Topbar = ({
         </span>
 
         {/* Avatar + dropdown */}
-        <div className="topbar-admin" onClick={() => setOpen(!open)}>
+        <div
+          className="topbar-admin"
+          onClick={() => setOpen(!open)}
+          style={isMobile ? { display: 'none' } : undefined}
+        >
           <img
             src={userPhoto}
             alt={userName}
@@ -201,7 +226,7 @@ const Topbar = ({
         </div>
 
         {open && (
-          <div className="admin-dropdown" role="menu">
+          <div className={`admin-dropdown${isMobile ? ' admin-dropdown-mobile' : ''}`} role="menu">
             <button role="menuitem" onClick={handleProfile}>Profile</button>
             <button role="menuitem" className="logout" onClick={handleLogout}>Logout</button>
           </div>

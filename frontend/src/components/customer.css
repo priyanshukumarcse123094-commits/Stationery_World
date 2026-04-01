@@ -142,15 +142,29 @@
   .customer-layout.sidebar-open .customer-main {
     margin-left: 0;
   }
-  /* Backdrop */
-  .customer-layout.sidebar-open .customer-main::before {
-    content: '';
-    position: fixed; inset: 0;
-    background: rgba(10,8,6,.50);
-    z-index: 200;
-    cursor: pointer;
-    animation: fadeIn .22s ease;
-  }
+  /* Remove pseudo-element backdrop — replaced by real div in CustomerLayout.jsx */
   .customer-content { padding: 18px 16px 48px; }
   .customer-layout.sidebar-open .customer-content { opacity: 1; }
+}
+
+/* Mobile backdrop overlay (real element — works with touch events) */
+.customer-sidebar-backdrop {
+  display: none;
+}
+@media (max-width: 768px) {
+  .customer-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 8, 6, 0.52);
+    z-index: 200;
+    cursor: pointer;
+    animation: csBackdropIn 0.22s ease;
+  }
+}
+@keyframes csBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+
+@keyframes sidebarShimmer {
+  from { opacity: 0.6; }
+  to   { opacity: 1; }
 }

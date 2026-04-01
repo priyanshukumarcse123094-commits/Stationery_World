@@ -21,7 +21,8 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
     const padding = 18;
     const width = window.innerWidth;
     const height = window.innerHeight;
-    const size = 120;
+    const isMobile = width <= 768;
+    const size = isMobile ? 72 : 120;
 
     const [vert, horiz] = position.split('-');
     const x = horiz === 'right' ? width - size - padding : padding;
@@ -37,10 +38,11 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
 
     const handleResize = () => {
       // Keep mascot on-screen after resizing (if it was still close to edges)
+      const mascotSize = window.innerWidth <= 768 ? 72 : 120;
       setPos((current) => {
         if (!current) return current;
-        const maxX = window.innerWidth - 140;
-        const maxY = window.innerHeight - 140;
+        const maxX = window.innerWidth - mascotSize - 12;
+        const maxY = window.innerHeight - mascotSize - 12;
         return {
           x: Math.min(Math.max(current.x, 12), maxX),
           y: Math.min(Math.max(current.y, 12), maxY)
