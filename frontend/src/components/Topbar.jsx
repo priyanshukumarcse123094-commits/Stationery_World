@@ -118,7 +118,7 @@ const Topbar = ({
 
       {/* Left: toggle + brand */}
       <div
-        style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}
+        className="topbar-left"
         ref={mobileMenuRef}
       >
         <button
@@ -185,7 +185,7 @@ const Topbar = ({
       </div>
 
       {/* Right: actions */}
-      <div className="topbar-actions" ref={dropdownRef} data-mobile-collapse={isMobile ? 'true' : 'false'}>
+      <div className="topbar-actions" ref={dropdownRef} data-mobile-collapse="false">
 
         {/* Theme toggle */}
         <button className="icon-link" onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} style={{ fontSize: 0 }}>
@@ -214,7 +214,6 @@ const Topbar = ({
         <div
           className="topbar-admin"
           onClick={() => setOpen(!open)}
-          style={isMobile ? { display: 'none' } : undefined}
         >
           <img
             src={userPhoto}
