@@ -4,6 +4,9 @@
   z-index: 80;
   opacity: 0.92;
   transform: translateZ(0);
+  left: 0;
+  top: 0;
+  transition: transform 140ms ease-out;
   cursor: grab;
   /* Prevent browser scroll/zoom from interfering with touch drag */
   touch-action: none;
@@ -13,6 +16,7 @@
 
 .mascot-wrapper.grabbing {
   cursor: grabbing;
+  transition: none;
 }
 
 .mascot-top-right {
@@ -111,4 +115,3 @@
     height: 72px;
   }
 }
-

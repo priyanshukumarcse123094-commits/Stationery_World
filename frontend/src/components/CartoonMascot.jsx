@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from 'react';
+import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import './CartoonMascot.css';
 
 /**
@@ -16,8 +16,11 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [pos, setPos] = useState(null);
+  const pendingPosRef = useRef(null);
+  const rafRef = useRef(null);
+  const latestPosRef = useRef(null);
 
-  const getInitialPos = () => {
+  const getInitialPos = useCallback(() => {
     const padding = 18;
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -29,17 +32,33 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
     const y = vert === 'bottom' ? height - size - padding : padding;
 
     return { x, y };
-  };
+  }, [position]);
+
+  const queuePositionUpdate = useCallback((next) => {
+    const base = pendingPosRef.current ?? latestPosRef.current;
+    const resolved = typeof next === 'function' ? next(base) : next;
+    pendingPosRef.current = resolved;
+
+    if (!rafRef.current) {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        if (pendingPosRef.current) {
+          setPos(pendingPosRef.current);
+          latestPosRef.current = pendingPosRef.current;
+        }
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (!pos) {
-      setPos(getInitialPos());
+      queuePositionUpdate(getInitialPos());
     }
 
     const handleResize = () => {
       // Keep mascot on-screen after resizing (if it was still close to edges)
       const mascotSize = window.innerWidth <= 768 ? 72 : 120;
-      setPos((current) => {
+      queuePositionUpdate((current) => {
         if (!current) return current;
         const maxX = window.innerWidth - mascotSize - 12;
         const maxY = window.innerHeight - mascotSize - 12;
@@ -52,12 +71,22 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [pos, position]);
+  }, [pos, getInitialPos, queuePositionUpdate]);
 
-  const variant = useMemo(() => {
-    const variants = ['pencil', 'ruler', 'book', 'paintbrush'];
-    return variants[Math.floor(Date.now() / 5000) % variants.length];
+  useEffect(() => {
+    latestPosRef.current = pos;
+  }, [pos]);
+
+  useEffect(() => () => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+    }
   }, []);
+
+  const [variant] = useState(() => {
+    const variants = ['pencil', 'ruler', 'book', 'paintbrush'];
+    return variants[Math.abs(position?.length ?? 0) % variants.length];
+  });
 
   const Svg = useMemo(() => {
     switch (variant) {
@@ -190,7 +219,7 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
 
   const handlePointerMove = (event) => {
     if (!dragging) return;
-    setPos({
+    queuePositionUpdate({
       x: event.clientX - dragOffset.x,
       y: event.clientY - dragOffset.y
     });
@@ -206,8 +235,7 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
 
   const wrapperStyle = pos
     ? {
-        left: pos.x,
-        top: pos.y
+        transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`
       }
     : undefined;
 
@@ -221,6 +249,7 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
       <div className="mascot-floating" data-variant={variant}>
         {Svg}
