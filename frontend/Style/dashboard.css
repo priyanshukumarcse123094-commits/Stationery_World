@@ -1609,14 +1609,16 @@ span[style*="dc3545"], span[style*="3498db"] {
   .topbar-brand      { display: none !important; }
   .topbar-brand-text { display: none; }
 
-  /* Search — fills available space */
+  /* Search — fills available space, always visible */
   .topbar-search {
+    display: flex;
     flex: 1;
     min-width: 0;
     max-width: none;
   }
   .search-input-wrap { height: 36px; }
   .topbar-search input {
+    display: block;
     height: 36px;
     font-size: 13px;
     padding: 0 36px 0 32px;
@@ -1665,9 +1667,11 @@ span[style*="dc3545"], span[style*="3498db"] {
   .dash-stats-grid-2 { grid-template-columns: 1fr; }
 }
 
-/* ── 480px ── */
+/* ── 480px — keep search visible, just tighten spacing ── */
 @media (max-width: 480px) {
-  .topbar { font-size: 18px; }
-  .topbar-search input { display: none; }
+  .topbar { font-size: 18px; gap: 6px; padding: 0 10px; }
+  .topbar-search input { display: block; height: 34px; font-size: 12.5px; }
   .topbar .topbar-icons .count { display: inline-block; }
+  /* Slightly smaller avatar to save space */
+  .topbar-admin img { width: 30px; height: 30px; }
 }
