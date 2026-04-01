@@ -296,7 +296,27 @@ span[style*="dc3545"], span[style*="3498db"] {
     margin-left: auto;
     gap: 8px;
   }
+  .topbar-actions > .icon-link {
+    padding: 8px 10px;
+    height: 36px;
+  }
+  .topbar-actions > .icon-link svg {
+    width: 16px;
+    height: 16px;
+  }
   .topbar-icons { gap: 8px; }
+  .topbar-icons .wishlist-link { display: none; }
+  .topbar-icons .cart-link {
+    padding: 6px 10px;
+    gap: 4px;
+    font-size: 12px;
+    border-radius: 999px;
+  }
+  .topbar-icons .cart-link .count {
+    min-width: 18px;
+    padding: 0 6px;
+    font-size: 10px;
+  }
   .topbar-username { display: none; }
   .topbar-admin img { width: 32px; height: 32px; }
 }

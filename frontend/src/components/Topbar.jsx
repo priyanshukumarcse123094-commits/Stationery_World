@@ -53,12 +53,16 @@ const Topbar = ({
   const { searchQuery, searchResults, isSearching, placeholder, resultRenderer, performSearch, clearSearch } = useSearch();
 
   const [user, setUser] = useState(authUtils.getUser());
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
   const userRole  = user?.role || 'CUSTOMER';
   const userPhoto = getImageUrl(user?.photoUrl, userRole);
   const userName  = user?.name || 'User';
   const isAdmin   = variant === 'admin';
   const isOpen    = isAdmin ? sidebarOpen : customerSidebarOpen;
-  const isMobile  = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const showWishlist = !isAdmin && !isMobile;
+  const showCart = !isAdmin;
 
   useEffect(() => {
     if (variant === 'customer' && user?.role === 'ADMIN') {
@@ -72,6 +76,23 @@ const Topbar = ({
     const onUpdate = (e) => setUser(e.detail);
     window.addEventListener('userUpdated', onUpdate);
     return () => window.removeEventListener('userUpdated', onUpdate);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let resizeFrame;
+    const handleResize = () => {
+      if (resizeFrame) cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => {
+        const nextIsMobile = window.innerWidth <= 768;
+        setIsMobile(nextIsMobile);
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => {
+      if (resizeFrame) cancelAnimationFrame(resizeFrame);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   useEffect(() => {
@@ -193,14 +214,18 @@ const Topbar = ({
         </button>
 
         {/* Customer quick links */}
-        {!isAdmin && (
+        {(showWishlist || showCart) && (
           <div className="topbar-icons" role="navigation" aria-label="Customer quick actions">
-            <Link to="/customer/wishlist" title="Wishlist" className="icon-link">
-              ❤️ <span className="count">{wishlistCount}</span>
-            </Link>
-            <Link to="/customer/cart" title="Cart" className="icon-link">
-              🛒 <span className="count">{cartCount}</span>
-            </Link>
+            {showWishlist && (
+              <Link to="/customer/wishlist" title="Wishlist" className="icon-link wishlist-link">
+                ❤️ <span className="count">{wishlistCount}</span>
+              </Link>
+            )}
+            {showCart && (
+              <Link to="/customer/cart" title="Cart" className="icon-link cart-link">
+                🛒 <span className="count">{cartCount}</span>
+              </Link>
+            )}
           </div>
         )}
 
