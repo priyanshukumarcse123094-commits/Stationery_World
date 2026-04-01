@@ -7,7 +7,7 @@ import { authUtils } from "../utils/auth";
 import { useSearch } from "../context/SearchContext";
 import SearchDropdown from "./SearchDropdown";
 import Logo from "./Logo";
-import { Search, X, Sun, Moon } from 'lucide-react';
+import { Search, X, Sun, Moon, ShoppingCart } from 'lucide-react';
 import { API_BASE_URL } from "../config/constants";
 
 const DEFAULT_AVATAR_CUSTOMER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 150 150'%3E%3Ccircle cx='75' cy='75' r='75' fill='%234d7260'/%3E%3Cpath d='M75 40c-11 0-20 9-20 20s9 20 20 20 20-9 20-20-9-20-20-20zm0 60c-16.5 0-30 8.5-30 19v6h60v-6c0-10.5-13.5-19-30-19z' fill='%23fff'/%3E%3C/svg%3E";
@@ -49,6 +49,9 @@ const Topbar = ({
   const mobileMenuRef = useRef(null);
   const searchRef   = useRef(null);
   const navigate    = useNavigate();
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
 
   const { searchQuery, searchResults, isSearching, placeholder, resultRenderer, performSearch, clearSearch } = useSearch();
 
@@ -58,7 +61,12 @@ const Topbar = ({
   const userName  = user?.name || 'User';
   const isAdmin   = variant === 'admin';
   const isOpen    = isAdmin ? sidebarOpen : customerSidebarOpen;
-  const isMobile  = typeof window !== 'undefined' && window.innerWidth <= 768;
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (variant === 'customer' && user?.role === 'ADMIN') {
@@ -113,6 +121,13 @@ const Topbar = ({
     setOpen(false);
   };
 
+  const handleLogoAction = () => {
+    if (isMobile) {
+      return isAdmin ? setSidebarOpen(!sidebarOpen) : onToggleSidebar?.();
+    }
+    navigate(isAdmin ? '/admin/dashboard' : '/customer');
+  };
+
   return (
     <header className="topbar" data-variant={variant}>
 
@@ -121,36 +136,34 @@ const Topbar = ({
         className="topbar-left"
         ref={mobileMenuRef}
       >
-        <button
-          className={`sidebar-toggle${isOpen ? ' open' : ''}`}
-          aria-label={isOpen ? 'Close sidebar' : 'Open sidebar'}
-          onClick={() => isAdmin ? setSidebarOpen(!sidebarOpen) : onToggleSidebar?.()}
-        >
-          <span className="toggle-icon-wrap">
-            <span className={`toggle-icon toggle-icon--menu${isOpen ? ' hidden' : ''}`}><MenuIcon /></span>
-            <span className={`toggle-icon toggle-icon--close${isOpen ? '' : ' hidden'}`}><CloseIcon /></span>
-          </span>
-        </button>
-        <span
-          className="topbar-brand"
-          onClick={() => {
-            if (isMobile) setOpen((prev) => !prev);
-          }}
-          role={isMobile ? 'button' : undefined}
-          tabIndex={isMobile ? 0 : undefined}
-          onKeyDown={(e) => {
-            if (!isMobile) return;
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setOpen((prev) => !prev);
-            }
-          }}
-        >
-          <Logo size={26} />
-          <span className="topbar-brand-text">
-            {variant === 'customer' ? 'Stationery World' : 'Stationery World'}
-          </span>
-        </span>
+        {isMobile ? (
+          <button
+            className="topbar-logo-btn"
+            aria-label="Stationery World"
+            onClick={handleLogoAction}
+          >
+            <Logo size={26} />
+          </button>
+        ) : (
+          <>
+            <button
+              className={`sidebar-toggle${isOpen ? ' open' : ''}`}
+              aria-label={isOpen ? 'Close sidebar' : 'Open sidebar'}
+              onClick={() => isAdmin ? setSidebarOpen(!sidebarOpen) : onToggleSidebar?.()}
+            >
+              <span className="toggle-icon-wrap">
+                <span className={`toggle-icon toggle-icon--menu${isOpen ? ' hidden' : ''}`}><MenuIcon /></span>
+                <span className={`toggle-icon toggle-icon--close${isOpen ? '' : ' hidden'}`}><CloseIcon /></span>
+              </span>
+            </button>
+            <span className="topbar-brand">
+              <Logo size={26} />
+              <span className="topbar-brand-text">
+                {variant === 'customer' ? 'Stationery World' : 'Stationery World'}
+              </span>
+            </span>
+          </>
+        )}
       </div>
 
       {/* Centre: search */}
@@ -185,30 +198,35 @@ const Topbar = ({
       </div>
 
       {/* Right: actions */}
-      <div className="topbar-actions" ref={dropdownRef} data-mobile-collapse="false">
+      <div className={`topbar-actions${isMobile ? ' topbar-actions-mobile' : ''}`} ref={dropdownRef} data-mobile-collapse={isMobile}>
 
         {/* Theme toggle */}
-        <button className="icon-link" onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} style={{ fontSize: 0 }}>
+        <button className={`icon-link${isMobile ? ' icon-compact' : ''}`} onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} style={{ fontSize: 0 }}>
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
         {/* Customer quick links */}
         {!isAdmin && (
           <div className="topbar-icons" role="navigation" aria-label="Customer quick actions">
-            <Link to="/customer/wishlist" title="Wishlist" className="icon-link wishlist-link">
-              ❤️ <span className="count">{wishlistCount}</span>
-            </Link>
-            <Link to="/customer/cart" title="Cart" className="icon-link cart-link">
-              🛒 <span className="count">{cartCount}</span>
+            {!isMobile && (
+              <Link to="/customer/wishlist" title="Wishlist" className="icon-link wishlist-link">
+                ❤️ <span className="count">{wishlistCount}</span>
+              </Link>
+            )}
+            <Link to="/customer/cart" title="Cart" className={`icon-link cart-link${isMobile ? ' icon-compact cart-icon-btn' : ''}`}>
+              <ShoppingCart size={16} />
+              <span className="count">{cartCount}</span>
             </Link>
           </div>
         )}
 
         {/* Username + badge */}
-        <span className="topbar-username">
-          {userName}
-          {isAdmin && <span className="topbar-badge-admin">ADMIN</span>}
-        </span>
+        {!isMobile && (
+          <span className="topbar-username">
+            {userName}
+            {isAdmin && <span className="topbar-badge-admin">ADMIN</span>}
+          </span>
+        )}
 
         {/* Avatar + dropdown */}
         <div
