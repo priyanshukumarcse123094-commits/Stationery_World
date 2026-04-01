@@ -18,6 +18,7 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
   const [pos, setPos] = useState(null);
   const pendingPosRef = useRef(null);
   const rafRef = useRef(null);
+  const latestPosRef = useRef(null);
 
   const getInitialPos = useCallback(() => {
     const padding = 18;
@@ -34,7 +35,8 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
   }, [position]);
 
   const queuePositionUpdate = useCallback((next) => {
-    const resolved = typeof next === 'function' ? next(pendingPosRef.current ?? pos) : next;
+    const base = pendingPosRef.current ?? latestPosRef.current;
+    const resolved = typeof next === 'function' ? next(base) : next;
     pendingPosRef.current = resolved;
 
     if (!rafRef.current) {
@@ -42,10 +44,11 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
         rafRef.current = null;
         if (pendingPosRef.current) {
           setPos(pendingPosRef.current);
+          latestPosRef.current = pendingPosRef.current;
         }
       });
     }
-  }, [pos]);
+  }, []);
 
   useEffect(() => {
     if (!pos) {
@@ -70,6 +73,10 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
     return () => window.removeEventListener('resize', handleResize);
   }, [pos, getInitialPos, queuePositionUpdate]);
 
+  useEffect(() => {
+    latestPosRef.current = pos;
+  }, [pos]);
+
   useEffect(() => () => {
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
@@ -78,7 +85,7 @@ export default function CartoonMascot({ position = 'bottom-right' }) {
 
   const [variant] = useState(() => {
     const variants = ['pencil', 'ruler', 'book', 'paintbrush'];
-    return variants[Math.floor(Date.now() / 5000) % variants.length];
+    return variants[Math.abs(position?.length ?? 0) % variants.length];
   });
 
   const Svg = useMemo(() => {

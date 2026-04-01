@@ -159,7 +159,7 @@ const Topbar = ({
             <span className="topbar-brand">
               <Logo size={26} />
               <span className="topbar-brand-text">
-                {variant === 'customer' ? 'Stationery World' : 'Stationery World'}
+                Stationery World
               </span>
             </span>
           </>
