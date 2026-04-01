@@ -297,6 +297,17 @@ span[style*="dc3545"], span[style*="3498db"] {
     gap: 8px;
   }
   .topbar-icons { gap: 8px; }
+  .topbar-icons .wishlist-link { display: none; }
+  .topbar-icons .cart-link {
+    padding: 6px 10px;
+    font-size: 12px;
+    gap: 4px;
+  }
+  .topbar-icons .cart-link .count {
+    min-width: 18px;
+    padding: 1px 5px;
+    font-size: 10px;
+  }
   .topbar-username { display: none; }
   .topbar-admin img { width: 32px; height: 32px; }
 }
