@@ -132,11 +132,10 @@ export default function ProductCard({ product, variant = 'standard', onAddToCart
   return (
     <>
       <div className={`product-card ${variant} ${isOutOfStock ? 'out-of-stock' : ''}`}>
-        {/* Stock Badge - ONLY show "Out of Stock" for customers */}
-        {isOutOfStock && <div className="stock-badge out">Out of Stock</div>}
-
         {/* Product Image */}
         <div className="pc-image" onClick={() => onViewProduct && onViewProduct(product)}>
+          {/* Stock Badge inside image container so it never overlaps body content */}
+          {isOutOfStock && <div className="stock-badge out">Out of Stock</div>}
           <img
             src={imageError ? '/placeholder.png' : imageUrl}
             alt={product.name}

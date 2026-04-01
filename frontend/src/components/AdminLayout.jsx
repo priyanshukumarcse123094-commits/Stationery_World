@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useSidebar } from "../context/SidebarContext";
 
 const AdminLayout = () => {
-  const { open } = useSidebar();
+  const { open, setOpen } = useSidebar();
   const location = useLocation();
   const [animatePage, setAnimatePage] = useState(true);
 
@@ -39,6 +39,10 @@ const AdminLayout = () => {
   return (
     <div className="admin-layout">
       <Sidebar />
+      {/* Backdrop to close sidebar on mobile when tapping outside */}
+      {open && (
+        <div className="sidebar-backdrop" onClick={() => setOpen(false)} aria-hidden="true" />
+      )}
       <div className={`admin-main${open ? "" : " sidebar-closed"}`}>
         <Topbar />
         <div className={`admin-content${animatePage ? ' page-transition' : ''}`}>

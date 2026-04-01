@@ -19,16 +19,23 @@ export default function CustomerLayout() {
 
   return (
     <div className={`customer-layout ${showSidebar ? 'sidebar-open' : ''}`}>
-      <CustomerSidebar />
+      <CustomerSidebar onNavigate={() => setShowSidebar(false)} />
       <div className="customer-main">
         <Topbar
           variant="customer"
           sidebarOpen={showSidebar}
           onToggleSidebar={() => setShowSidebar(s => !s)}
         />
+        {/* Backdrop overlay — closes sidebar when tapping outside on mobile */}
+        {showSidebar && (
+          <div
+            className="customer-sidebar-backdrop"
+            onClick={() => setShowSidebar(false)}
+            aria-hidden="true"
+          />
+        )}
         <main
           className={`customer-content${animatePage ? ' page-transition' : ''}`}
-          onClick={() => showSidebar && setShowSidebar(false)}
         >
           <Outlet />
         </main>

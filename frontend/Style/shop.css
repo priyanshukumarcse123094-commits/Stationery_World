@@ -600,14 +600,15 @@
 /* Stock Badge */
 .stock-badge {
   position: absolute;
-  top: 16px;
-  left: 16px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
+  top: 10px;
+  left: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
   font-weight: 700;
   z-index: 2;
-  backdrop-filter: blur(10px);
+  letter-spacing: 0.3px;
+  pointer-events: none;
 }
 
 .stock-badge.out {
