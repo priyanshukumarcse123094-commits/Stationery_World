@@ -68,7 +68,9 @@ const getAllProducts = async (req, res) => {
     const normalizedAudience = String(audience || '').toLowerCase();
     const isCustomerCatalog = normalizedAudience === 'customer';
     const shouldRandomize = String(random || '').toLowerCase() === 'true';
+    const shouldLowStockFilter = lowStock === 'true';
     const searchTerm = typeof search === 'string' ? search.trim() : '';
+    const upperSearchTerm = searchTerm.toUpperCase();
 
     if (searchTerm.length > 200) {
       return res.status(400).json({
@@ -93,7 +95,7 @@ const getAllProducts = async (req, res) => {
 
     const page = parsePositiveInt(pageQuery) || 1;
     const requestedLimit = parsePositiveInt(limitQuery);
-    const effectiveLimit = Math.min(requestedLimit || (isCustomerCatalog ? 20 : 20), MAX_PAGE_LIMIT);
+    const effectiveLimit = Math.min(requestedLimit || 20, MAX_PAGE_LIMIT);
     const shouldPaginate =
       isCustomerCatalog ||
       pageQuery !== undefined ||
@@ -137,9 +139,12 @@ const getAllProducts = async (req, res) => {
         { uid: { contains: searchTerm, mode: 'insensitive' } },
         { name: { contains: searchTerm, mode: 'insensitive' } },
         { description: { contains: searchTerm, mode: 'insensitive' } },
-        { category: { equals: searchTerm.toUpperCase() } },
         { subCategory: { contains: searchTerm, mode: 'insensitive' } }
       ];
+
+      if (VALID_CATEGORIES.includes(upperSearchTerm)) {
+        orClauses.push({ category: upperSearchTerm });
+      }
 
       // If there are distinct terms, search keywords array for any match
       if (terms.length > 0) {
@@ -152,7 +157,7 @@ const getAllProducts = async (req, res) => {
     }
 
     const orderByClause = getOrderByClause(sortBy, sortOrder);
-    const rawRandomAllowed = shouldRandomize && !searchTerm && lowStock !== 'true';
+    const rawRandomAllowed = shouldRandomize && !searchTerm && !shouldLowStockFilter;
     let products = [];
     let totalCount = 0;
 
@@ -160,7 +165,11 @@ const getAllProducts = async (req, res) => {
       const rawWhere = [];
 
       if (where.isActive !== undefined) {
-        rawWhere.push(Prisma.sql`"isActive" = ${where.isActive}`);
+        rawWhere.push(
+          where.isActive
+            ? Prisma.sql`"isActive" = TRUE`
+            : Prisma.sql`"isActive" = FALSE`
+        );
       }
       if (where.category !== undefined) {
         rawWhere.push(Prisma.sql`"category" = ${where.category}`);
@@ -179,17 +188,20 @@ const getAllProducts = async (req, res) => {
         ? Prisma.sql`WHERE ${Prisma.join(rawWhere, Prisma.sql` AND `)}`
         : Prisma.sql``;
 
-      const randomRows = await prisma.$queryRaw`
-        SELECT "id"
-        FROM "products"
-        ${whereClause}
-        ORDER BY RANDOM()
-        LIMIT ${effectiveLimit}
-        OFFSET ${skip || 0}
-      `;
+      const [randomRows, countedTotal] = await Promise.all([
+        prisma.$queryRaw`
+          SELECT "id"
+          FROM "products"
+          ${whereClause}
+          ORDER BY RANDOM()
+          LIMIT ${effectiveLimit}
+          OFFSET ${skip || 0}
+        `,
+        prisma.product.count({ where })
+      ]);
 
       const randomIds = randomRows.map((row) => row.id);
-      totalCount = await prisma.product.count({ where });
+      totalCount = countedTotal;
 
       if (randomIds.length > 0) {
         const listed = await prisma.product.findMany({
@@ -207,7 +219,7 @@ const getAllProducts = async (req, res) => {
         orderBy: orderByClause
       };
 
-      if (shouldPaginate) {
+      if (shouldPaginate && !shouldLowStockFilter) {
         query.skip = skip;
         query.take = effectiveLimit;
       }
@@ -220,9 +232,14 @@ const getAllProducts = async (req, res) => {
 
     // If lowStock filter is true, filter products below threshold (use in-memory filter)
     let filteredProducts = products;
-    if (lowStock === 'true') {
-      filteredProducts = products.filter((p) => p.totalStock <= p.lowStockThreshold);
-      totalCount = filteredProducts.length;
+    if (shouldLowStockFilter) {
+      const lowStockProducts = products.filter((p) => p.totalStock <= p.lowStockThreshold);
+      totalCount = lowStockProducts.length;
+      if (shouldPaginate) {
+        filteredProducts = lowStockProducts.slice(skip || 0, (skip || 0) + effectiveLimit);
+      } else {
+        filteredProducts = lowStockProducts;
+      }
     }
 
     return res.status(200).json({

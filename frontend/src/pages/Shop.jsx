@@ -96,9 +96,9 @@ export default function Shop() {
       if (e.key === 'Enter') {
         const isTopbar = document.activeElement?.closest('.topbar-search');
         if (isTopbar && topbarQuery.trim()) {
-          const committed = topbarQuery.trim();
-          setActiveSearch(committed);
-          setSearchQuery(committed);
+          const searchTerm = topbarQuery.trim();
+          setActiveSearch(searchTerm);
+          setSearchQuery(searchTerm);
         }
       }
     };
@@ -106,7 +106,7 @@ export default function Shop() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [topbarQuery]);
 
-  const fetchProducts = async ({ query = '' } = {}) => {
+  const fetchProducts = useCallback(async ({ query = '' } = {}) => {
     try {
       setLoading(true);
       const params = new URLSearchParams({
@@ -141,20 +141,19 @@ export default function Shop() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategory, sortBy, showToast]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      setSearchDebounce((activeSearch || searchQuery).trim());
+      const effectiveSearchTerm = (activeSearch || searchQuery).trim();
+      setSearchDebounce(effectiveSearchTerm);
     }, 350);
     return () => window.clearTimeout(timeoutId);
   }, [activeSearch, searchQuery]);
 
   useEffect(() => {
     fetchProducts({ query: searchDebounce });
-  }, [searchDebounce, selectedCategory, sortBy]);
-
-  const filteredProducts = useMemo(() => products, [products]);
+  }, [searchDebounce, fetchProducts]);
 
   const featuredProduct = useMemo(() => {
     return products.find(p => p.totalStock > 0) || products[0];
@@ -337,7 +336,7 @@ export default function Shop() {
           <div className="active-search-banner">
             <Search size={15} />
             Results for <strong className="active-search-term">"{activeSearch}"</strong>
-            &nbsp;— {filteredProducts.length} match{filteredProducts.length !== 1 ? 'es' : ''}
+            &nbsp;— {products.length} match{products.length !== 1 ? 'es' : ''}
             <button
               className="active-search-clear"
               onClick={clearActiveSearch}
@@ -377,7 +376,7 @@ export default function Shop() {
           </div>
         </div>
 
-        {filteredProducts.length === 0 ? (
+        {products.length === 0 ? (
           <div className="no-products">
             <h3>No products found</h3>
             <p>{activeSearch ? `No matches for "${activeSearch}"` : 'Try adjusting your search or filters'}</p>
@@ -390,12 +389,12 @@ export default function Shop() {
         ) : (
           <>
             <div className="products-count">
-              Showing {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
+              Showing {products.length} {products.length === 1 ? 'product' : 'products'}
               {activeSearch && ` for "${activeSearch}"`}
             </div>
 
             <ProductGrid
-              products={filteredProducts}
+              products={products}
               onAddToCart={handleAddToCart}
               onToggleWishlist={handleToggleWishlist}
               onViewProduct={handleViewProduct}
