@@ -1,3 +1,4 @@
+const { Prisma } = require('@prisma/client');
 const prisma = require('../../../prisma/client');
 
 // Valid categories enum
@@ -16,11 +17,38 @@ const productInclude = {
   }
 };
 
-// Get all products with filters (Public)
+const MAX_PAGE_LIMIT = 100;
+
+const parsePositiveInt = (value) => {
+  const parsed = parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const getOrderByClause = (sortBy, sortOrder) => {
+  const order = sortOrder === 'asc' ? 'asc' : 'desc';
+
+  switch ((sortBy || '').toLowerCase()) {
+    case 'price-low':
+      return { baseSellingPrice: 'asc' };
+    case 'price-high':
+      return { baseSellingPrice: 'desc' };
+    case 'name':
+      return { name: 'asc' };
+    case 'newest':
+    case 'featured':
+      return { createdAt: 'desc' };
+    case 'price':
+      return { baseSellingPrice: order };
+    case 'createdat':
+      return { createdAt: order };
+    default:
+      return { createdAt: 'desc' };
+  }
+};
+
 // Get all products with filters (Public)
 const getAllProducts = async (req, res) => {
   try {
-
     const { 
       isActive, 
       category, 
@@ -28,14 +56,58 @@ const getAllProducts = async (req, res) => {
       maxPrice, 
       search,
       bargainable,
-      lowStock 
+      lowStock,
+      audience,
+      random,
+      page: pageQuery,
+      limit: limitQuery,
+      sortBy,
+      sortOrder
     } = req.query;
+
+    const normalizedAudience = String(audience || '').toLowerCase();
+    const isCustomerCatalog = normalizedAudience === 'customer';
+    const shouldRandomize = String(random || '').toLowerCase() === 'true';
+    const searchTerm = typeof search === 'string' ? search.trim() : '';
+
+    if (searchTerm.length > 200) {
+      return res.status(400).json({
+        success: false,
+        message: 'search must be 200 characters or fewer.'
+      });
+    }
+
+    if (pageQuery !== undefined && parsePositiveInt(pageQuery) === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'page must be a positive integer.'
+      });
+    }
+
+    if (limitQuery !== undefined && parsePositiveInt(limitQuery) === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'limit must be a positive integer.'
+      });
+    }
+
+    const page = parsePositiveInt(pageQuery) || 1;
+    const requestedLimit = parsePositiveInt(limitQuery);
+    const effectiveLimit = Math.min(requestedLimit || (isCustomerCatalog ? 20 : 20), MAX_PAGE_LIMIT);
+    const shouldPaginate =
+      isCustomerCatalog ||
+      pageQuery !== undefined ||
+      limitQuery !== undefined ||
+      !!searchTerm;
+    const skip = shouldPaginate ? (page - 1) * effectiveLimit : undefined;
 
     // Build filter conditions
     const where = {};
 
-    // Filter by active status
-    if (isActive !== undefined) {
+    // Customer catalog always returns customer-eligible products
+    if (isCustomerCatalog) {
+      where.isActive = true;
+    } else if (isActive !== undefined) {
       where.isActive = isActive === 'true';
     }
 
@@ -57,15 +129,16 @@ const getAllProducts = async (req, res) => {
     }
 
     // Search in uid, name, description, subCategory, and keywords
-    if (search) {
-      const terms = search.split(/\s+/).filter(Boolean);
+    if (searchTerm) {
+      const terms = searchTerm.split(/\s+/).filter(Boolean);
 
       // Create OR conditions: uid contains, name contains, description contains, subCategory contains
       const orClauses = [
-        { uid: { contains: search, mode: 'insensitive' } },
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { subCategory: { contains: search, mode: 'insensitive' } }
+        { uid: { contains: searchTerm, mode: 'insensitive' } },
+        { name: { contains: searchTerm, mode: 'insensitive' } },
+        { description: { contains: searchTerm, mode: 'insensitive' } },
+        { category: { equals: searchTerm.toUpperCase() } },
+        { subCategory: { contains: searchTerm, mode: 'insensitive' } }
       ];
 
       // If there are distinct terms, search keywords array for any match
@@ -78,28 +151,95 @@ const getAllProducts = async (req, res) => {
       ];
     }
 
-    const products = await prisma.product.findMany({
-      where,
-      include: {
-        images: true  // ✅ CRITICAL: Include images
-      },
-      include: productInclude,
-      orderBy: {
-        createdAt: 'desc'
+    const orderByClause = getOrderByClause(sortBy, sortOrder);
+    const rawRandomAllowed = shouldRandomize && !searchTerm && lowStock !== 'true';
+    let products = [];
+    let totalCount = 0;
+
+    if (rawRandomAllowed) {
+      const rawWhere = [];
+
+      if (where.isActive !== undefined) {
+        rawWhere.push(Prisma.sql`"isActive" = ${where.isActive}`);
       }
-    });
+      if (where.category !== undefined) {
+        rawWhere.push(Prisma.sql`"category" = ${where.category}`);
+      }
+      if (where.bargainable !== undefined) {
+        rawWhere.push(Prisma.sql`"bargainable" = ${where.bargainable}`);
+      }
+      if (where.baseSellingPrice?.gte !== undefined) {
+        rawWhere.push(Prisma.sql`"baseSellingPrice" >= ${where.baseSellingPrice.gte}`);
+      }
+      if (where.baseSellingPrice?.lte !== undefined) {
+        rawWhere.push(Prisma.sql`"baseSellingPrice" <= ${where.baseSellingPrice.lte}`);
+      }
+
+      const whereClause = rawWhere.length
+        ? Prisma.sql`WHERE ${Prisma.join(rawWhere, Prisma.sql` AND `)}`
+        : Prisma.sql``;
+
+      const randomRows = await prisma.$queryRaw`
+        SELECT "id"
+        FROM "products"
+        ${whereClause}
+        ORDER BY RANDOM()
+        LIMIT ${effectiveLimit}
+        OFFSET ${skip || 0}
+      `;
+
+      const randomIds = randomRows.map((row) => row.id);
+      totalCount = await prisma.product.count({ where });
+
+      if (randomIds.length > 0) {
+        const listed = await prisma.product.findMany({
+          where: { id: { in: randomIds } },
+          include: productInclude
+        });
+
+        const byId = new Map(listed.map((p) => [p.id, p]));
+        products = randomIds.map((id) => byId.get(id)).filter(Boolean);
+      }
+    } else {
+      const query = {
+        where,
+        include: productInclude,
+        orderBy: orderByClause
+      };
+
+      if (shouldPaginate) {
+        query.skip = skip;
+        query.take = effectiveLimit;
+      }
+
+      [products, totalCount] = await Promise.all([
+        prisma.product.findMany(query),
+        prisma.product.count({ where })
+      ]);
+    }
 
     // If lowStock filter is true, filter products below threshold (use in-memory filter)
     let filteredProducts = products;
     if (lowStock === 'true') {
-      filteredProducts = products.filter(p => p.totalStock <= p.lowStockThreshold);
+      filteredProducts = products.filter((p) => p.totalStock <= p.lowStockThreshold);
+      totalCount = filteredProducts.length;
     }
 
     return res.status(200).json({
       success: true,
       message: 'Products retrieved successfully.',
       data: filteredProducts,
-      count: filteredProducts.length
+      count: filteredProducts.length,
+      ...(shouldPaginate
+        ? {
+            pagination: {
+              page,
+              limit: effectiveLimit,
+              total: totalCount,
+              totalPages: Math.max(1, Math.ceil(totalCount / effectiveLimit))
+            }
+          }
+        : {})
     });
   } catch (error) {
     console.error('Get all products error:', error);

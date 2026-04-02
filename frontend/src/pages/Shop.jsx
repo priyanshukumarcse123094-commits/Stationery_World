@@ -22,6 +22,7 @@ export default function Shop() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [activeSearch, setActiveSearch] = useState('');
+  const [searchDebounce, setSearchDebounce] = useState('');
 
   const { showToast } = useToast();
   const [wishlistIds, setWishlistIds] = useState(new Set());
@@ -56,25 +57,26 @@ export default function Shop() {
   }, []);
 
   useEffect(() => {
-    fetchProducts();
     fetchWishlistIds();
-  }, []);
+  }, [fetchWishlistIds]);
 
   // Topbar search: dropdown as you type
   useEffect(() => {
     const searchProducts = async (query) => {
-      const words = query.toLowerCase().trim().split(/\s+/);
-      return products
-        .filter(p =>
-          words.some(w =>
-            p.name.toLowerCase().includes(w) ||
-            p.description?.toLowerCase().includes(w) ||
-            p.category.toLowerCase().includes(w) ||
-            p.subCategory?.toLowerCase().includes(w) ||
-            p.keywords?.some(k => k.toLowerCase().includes(w))
-          )
-        )
-        .slice(0, 8)
+      const trimmed = query.trim();
+      if (!trimmed) return [];
+
+      const qs = new URLSearchParams({
+        audience: 'customer',
+        search: trimmed,
+        limit: '8'
+      });
+
+      const response = await fetch(`${API}/api/products?${qs.toString()}`);
+      const result = await response.json();
+      if (!result.success) return [];
+
+      return (result.data || [])
         .map(p => ({
           id: p.id,
           title: p.name,
@@ -94,7 +96,9 @@ export default function Shop() {
       if (e.key === 'Enter') {
         const isTopbar = document.activeElement?.closest('.topbar-search');
         if (isTopbar && topbarQuery.trim()) {
-          setActiveSearch(topbarQuery.trim());
+          const committed = topbarQuery.trim();
+          setActiveSearch(committed);
+          setSearchQuery(committed);
         }
       }
     };
@@ -102,43 +106,33 @@ export default function Shop() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [topbarQuery]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async ({ query = '' } = {}) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const url = token
-        ? `${API}/api/products/recommended?limit=20`
-        : `${API}/api/products`;
-
-      const response = await fetch(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      const params = new URLSearchParams({
+        audience: 'customer',
+        limit: '20',
+        page: '1',
       });
+
+      if (selectedCategory !== 'All') params.set('category', selectedCategory);
+      if (sortBy) params.set('sortBy', sortBy);
+
+      const trimmed = query.trim();
+      if (trimmed) {
+        params.set('search', trimmed);
+      } else {
+        params.set('random', 'true');
+      }
+
+      const response = await fetch(`${API}/api/products?${params.toString()}`);
       const result = await response.json();
 
       if (!result.success) {
-        // If recommendations fail (invalid/expired token), fall back to public products
-        if (token) {
-          const fallbackRes = await fetch(`${API}/api/products`);
-          const fallbackResult = await fallbackRes.json();
-
-          if (!fallbackResult.success) {
-            throw new Error(fallbackResult.message);
-          }
-
-          const activeProducts = (fallbackResult.data || []).filter(p => p.isActive);
-          const shuffled = activeProducts.sort(() => Math.random() - 0.5);
-          setProducts(shuffled.slice(0, 20));
-          setError(null);
-          return;
-        }
-
         throw new Error(result.message);
       }
 
-      const activeProducts = (result.data || []).filter(p => p.isActive);
-      // show a randomized subset of 20 products each time when not using recommended endpoint
-      const finalList = token ? activeProducts : activeProducts.sort(() => Math.random() - 0.5);
-      setProducts(finalList.slice(0, 20));
+      setProducts(result.data || []);
       setError(null);
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -149,52 +143,28 @@ export default function Shop() {
     }
   };
 
-  const filteredProducts = useMemo(() => {
-    let filtered = [...products];
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearchDebounce((activeSearch || searchQuery).trim());
+    }, 350);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeSearch, searchQuery]);
 
-    if (selectedCategory !== 'All') {
-      filtered = filtered.filter(p => p.category === selectedCategory);
-    }
+  useEffect(() => {
+    fetchProducts({ query: searchDebounce });
+  }, [searchDebounce, selectedCategory, sortBy]);
 
-    if (activeSearch || searchQuery.trim()) {
-      const query = (activeSearch || searchQuery).toLowerCase().trim();
-      const words = query.split(/\s+/);
-      filtered = filtered.filter(p =>
-        words.some(w =>
-          p.name.toLowerCase().includes(w) ||
-          p.description?.toLowerCase().includes(w) ||
-          p.category.toLowerCase().includes(w) ||
-          p.subCategory?.toLowerCase().includes(w) ||
-          p.keywords?.some(k => k.toLowerCase().includes(w))
-        )
-      );
-    }
-
-    switch (sortBy) {
-      case 'price-low':
-        filtered.sort((a, b) => parseFloat(a.baseSellingPrice) - parseFloat(b.baseSellingPrice));
-        break;
-      case 'price-high':
-        filtered.sort((a, b) => parseFloat(b.baseSellingPrice) - parseFloat(a.baseSellingPrice));
-        break;
-      case 'name':
-        filtered.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'newest':
-        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        break;
-      default:
-        break;
-    }
-
-    return filtered;
-  }, [products, selectedCategory, activeSearch, searchQuery, sortBy]);
+  const filteredProducts = useMemo(() => products, [products]);
 
   const featuredProduct = useMemo(() => {
     return products.find(p => p.totalStock > 0) || products[0];
   }, [products]);
 
-  const clearActiveSearch = () => { setActiveSearch(''); clearSearch(); };
+  const clearActiveSearch = () => {
+    setActiveSearch('');
+    setSearchQuery('');
+    clearSearch();
+  };
 
   // ✅ FIX: Use useCallback to stabilize the function
   const handleAddToCart = useCallback(async (product) => {
