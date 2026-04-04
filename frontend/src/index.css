@@ -579,3 +579,205 @@ body {
 @keyframes pageEnter {
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ═══════════════════════════════════════════════════════
+   DARK MODE — Shop & Product Card token overrides
+   Ensures every hardcoded color in shop components
+   respects the dark theme.
+═══════════════════════════════════════════════════════ */
+
+/* ProductCard dark mode */
+[data-theme="dark"] .product-card {
+  background: var(--bg-surface);
+  border-color: var(--border);
+}
+[data-theme="dark"] .pc-image {
+  background: var(--bg-subtle);
+}
+[data-theme="dark"] .pc-category {
+  color: var(--gold);
+}
+[data-theme="dark"] .pc-title {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .pc-description {
+  color: var(--text-muted);
+}
+[data-theme="dark"] .pc-price .amount {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .pc-price .currency {
+  color: var(--text-secondary);
+}
+
+/* Shop page dark mode */
+[data-theme="dark"] .shop-page {
+  background: var(--bg-page);
+}
+[data-theme="dark"] .card {
+  background: var(--bg-surface);
+  border-color: var(--border);
+}
+[data-theme="dark"] .cat-chip {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .cat-chip:hover {
+  background: var(--bg-muted);
+  border-color: var(--gold);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .cat-chip.active {
+  background: var(--text-primary);
+  color: var(--text-inverse);
+  border-color: var(--text-primary);
+}
+[data-theme="dark"] .search-wrap input {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .sort-select {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .products-count {
+  color: var(--text-muted);
+}
+[data-theme="dark"] .active-search-banner {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+/* Product Detail Modal dark mode */
+[data-theme="dark"] .product-detail-modal {
+  background: var(--bg-surface);
+  border-color: var(--border);
+}
+[data-theme="dark"] .modal-left {
+  background: var(--bg-subtle);
+  border-right-color: var(--border);
+}
+[data-theme="dark"] .modal-title {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .modal-price {
+  color: var(--text-primary);
+}
+[data-theme="dark"] .modal-category {
+  color: var(--gold);
+}
+[data-theme="dark"] .modal-description {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+}
+[data-theme="dark"] .modal-description p {
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .modal-close {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .image-thumbnails {
+  background: var(--bg-surface);
+  border-top-color: var(--border);
+}
+[data-theme="dark"] .thumbnail {
+  border-color: var(--border);
+}
+[data-theme="dark"] .thumbnail.active {
+  border-color: var(--gold);
+}
+
+/* Inventory dark mode fixes */
+[data-theme="dark"] .inventory-card {
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .inventory-search,
+[data-theme="dark"] .view-search,
+[data-theme="dark"] .sort-select {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .inv-table {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .inv-table th {
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+[data-theme="dark"] .inv-table td {
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .inv-table tr:hover td {
+  background: var(--bg-subtle);
+}
+[data-theme="dark"] .low-stock-card {
+  background: var(--bg-surface);
+  border-color: var(--border);
+}
+[data-theme="dark"] .restock-box {
+  background: var(--bg-surface);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .search-results ul li {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+/* Buttons global dark mode */
+[data-theme="dark"] .btn.outline {
+  border-color: var(--border);
+  color: var(--text-secondary);
+  background: transparent;
+}
+[data-theme="dark"] .btn.outline:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .btn.primary {
+  background: var(--gold);
+  color: #1A1612;
+}
+
+/* Modal buy-now dark mode */
+[data-theme="dark"] .modal-content {
+  background: var(--bg-surface);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .buy-now-info {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+}
+[data-theme="dark"] .qty-btn {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-textarea {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+/* Customer sidebar dark mode already handled by sidebar tokens */
+
+/* Topbar dark mode */
+[data-theme="dark"] .topbar {
+  background: var(--topbar-bg);
+  border-bottom-color: var(--topbar-border);
+}
