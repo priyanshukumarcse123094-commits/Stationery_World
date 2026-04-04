@@ -1,258 +1,320 @@
-import { useState, useEffect } from 'react';
-import './BargainModal.css';
+import React, { useState, useEffect } from 'react';
+import {
+  X, Heart, ShoppingCart, Package,
+  Minus, Plus, Zap, Bell, Tag, CheckCircle2
+} from 'lucide-react';
+import BargainModal from './BargainModal';
+import './ProductDetailModal.css';
 import { API_BASE_URL } from '../../config/constants';
 
-/**
- * BargainModal Component
- * Handles bargain offer submission with validation and timer
- */
-const BargainModal = ({ 
-  isOpen, 
-  onClose, 
-  product, 
-  eligibility, 
-  onSuccess 
-}) => {
-  const [offeredPrice, setOfferedPrice] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [result, setResult] = useState(null);
+export default function ProductDetailModal({
+  product,
+  onClose,
+  onAddToCart,
+  onToggleWishlist,
+  onBuyNow,
+  isWishlisted = false,
+}) {
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [quantity, setQuantity]           = useState(1);
+  const [notifying, setNotifying]         = useState(false);
+  const [notified, setNotified]           = useState(false);
+  const [addedFlash, setAddedFlash]       = useState(false);
 
+  const [showBargainModal, setShowBargainModal]       = useState(false);
+  const [eligibility, setEligibility]                 = useState(null);
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+
+  /* ── helpers ── */
+  const getImageUrl = (url) => {
+    if (!url) return '/placeholder.png';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `${API_BASE_URL}${url}`;
+  };
+
+  const images        = product.images || [];
+  const currentImgUrl = images[selectedImage]?.url
+    ? getImageUrl(images[selectedImage].url)
+    : '/placeholder.png';
+
+  const isOutOfStock = product.totalStock === 0;
+  const maxQuantity  = Math.min(product.totalStock, 10);
+
+  /* ── Bargain eligibility ── */
   useEffect(() => {
-    if (isOpen) {
-      // Reset state when modal opens
-      setOfferedPrice('');
-      setError('');
-      setResult(null);
-    }
-  }, [isOpen]);
+    if (product.bargainable && !isOutOfStock) checkBargainEligibility();
+  }, [product.id, product.bargainable]);
 
-  if (!isOpen) return null;
-
-  const config = eligibility?.metadata?.config;
-  const basePrice = eligibility?.metadata?.product?.basePrice;
-  const remainingAttempts = eligibility?.metadata?.remainingAttempts || 0;
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
+  const checkBargainEligibility = async () => {
+    setCheckingEligibility(true);
     try {
-      const price = parseFloat(offeredPrice);
+      const token = localStorage.getItem('token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res    = await fetch(`${API_BASE_URL}/api/bargain/eligibility/${product.id}`, { headers });
+      const result = await res.json();
+      if (result.success) setEligibility(result.data);
+    } catch (e) {
+      console.error('Eligibility check failed:', e);
+    } finally {
+      setCheckingEligibility(false);
+    }
+  };
 
-      // Client-side validation
-      if (isNaN(price) || price <= 0) {
-        setError('Please enter a valid price');
-        setLoading(false);
-        return;
-      }
+  const handleBargainSuccess = (data) => {
+    alert(`Offer accepted at ₹${data.finalPrice}! Item added to cart.`);
+    checkBargainEligibility();
+    onClose();
+  };
 
-      if (price > basePrice) {
-        setError(`Price cannot exceed ₹${basePrice}`);
-        setLoading(false);
-        return;
-      }
+  /* ── Cart ── */
+  const handleAddToCart = () => {
+    for (let i = 0; i < quantity; i++) onAddToCart(product);
+    setAddedFlash(true);
+    setTimeout(() => { setAddedFlash(false); onClose(); }, 700);
+  };
 
-      if (config && price < config.tier3Price) {
-        setError(`Minimum acceptable price is ₹${config.tier3Price}`);
-        setLoading(false);
-        return;
-      }
+  const handleQuantityChange = (delta) => {
+    const n = quantity + delta;
+    if (n >= 1 && n <= maxQuantity) setQuantity(n);
+  };
 
-      // Make API call
-      const response = await fetch(`${API_BASE_URL}/api/bargain/attempt`, {
+  /* ── Notify ── */
+  const handleNotifyMe = async () => {
+    setNotifying(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) { alert('Please login to get notified'); return; }
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const res  = await fetch(`${API_BASE_URL}/api/products/${product.id}/notify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          productId: product.id,
-          offeredPrice: price
-        })
+        body: JSON.stringify({ email: user.email }),
       });
-
-      const data = await response.json();
-
-      if (data.success) {
-        // Accepted!
-        setResult({
-          type: 'success',
-          message: data.message,
-          data: data.data
-        });
-
-        // Call success callback after 2 seconds
-        setTimeout(() => {
-          onSuccess && onSuccess(data.data);
-          onClose();
-        }, 2000);
-      } else {
-        // Rejected
-        setResult({
-          type: 'error',
-          message: data.message,
-          data: data.data
-        });
-      }
-
+      const result = await res.json();
+      if (result.success) setNotified(true);
+      else alert(result.message || 'Failed to register notification');
     } catch (err) {
-      console.error('Bargain attempt error:', err);
-      setError('Failed to submit bargain. Please try again.');
+      console.error('Notify error:', err);
+      alert('Failed to register notification');
     } finally {
-      setLoading(false);
+      setNotifying(false);
     }
   };
 
-  const handleBackdropClick = (e) => {
-    if (e.target.className === 'bargain-modal-overlay') {
-      onClose();
-    }
-  };
-
-  // If result is shown, display result screen
-  if (result) {
-    return (
-      <div className="bargain-modal-overlay" onClick={handleBackdropClick}>
-        <div className="bargain-modal">
-          <div className={`bargain-result ${result.type}`}>
-            <div className="result-icon">
-              {result.type === 'success' ? '✅' : '❌'}
-            </div>
-            <h3>{result.type === 'success' ? 'Offer Accepted!' : 'Offer Rejected'}</h3>
-            <p>{result.message}</p>
-
-            {result.type === 'success' && result.data.finalPrice && (
-              <div className="accepted-price">
-                <span>Final Price:</span>
-                <strong>₹{result.data.finalPrice}</strong>
-                <div className="tier-badge">Tier {result.data.acceptedTier}</div>
-              </div>
-            )}
-
-            {result.type === 'error' && result.data?.remainingAttempts !== undefined && (
-              <div className="remaining-attempts">
-                {result.data.remainingAttempts} attempt(s) remaining
-              </div>
-            )}
-
-            <button 
-              onClick={onClose}
-              className="bargain-btn bargain-btn-primary"
-            >
-              {result.type === 'success' ? 'View Cart' : 'Try Again'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show bargain form
   return (
-    <div className="bargain-modal-overlay" onClick={handleBackdropClick}>
-      <div className="bargain-modal">
-        <div className="modal-header">
-          <h2>Make an Offer</h2>
-          <button onClick={onClose} className="close-btn">&times;</button>
-        </div>
+    <>
+      {/* KEY FIX: modal-overlay is NOT used here — this component renders its own overlay */}
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="product-detail-modal" onClick={(e) => e.stopPropagation()}>
 
-        <div className="modal-body">
-          <div className="product-info">
-            <h3>{product.name}</h3>
-            <div className="price-info">
-              <span className="label">Original Price:</span>
-              <span className="value">₹{basePrice}</span>
+          {/* Close — positioned absolute inside modal shell */}
+          <button className="modal-close" onClick={onClose} aria-label="Close">
+            <X size={16} strokeWidth={2.5} />
+          </button>
+
+          {/* 
+            KEY FIX: .modal-content is now a CSS grid with 
+            grid-template-columns: 420px 1fr
+            so the right panel fills properly instead of leaving white space
+          */}
+          <div className="modal-content">
+
+            {/* ══ LEFT — Images ══ */}
+            <div className="modal-left">
+              <div className="main-image">
+                <img
+                  src={currentImgUrl}
+                  alt={product.name}
+                  onError={(e) => (e.target.src = '/placeholder.png')}
+                />
+                {isOutOfStock && (
+                  <div className="modal-stock-badge">Out of Stock</div>
+                )}
+              </div>
+
+              {images.length > 1 && (
+                <div className="image-thumbnails">
+                  {images.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className={`thumbnail ${idx === selectedImage ? 'active' : ''}`}
+                      onClick={() => setSelectedImage(idx)}
+                    >
+                      <img
+                        src={getImageUrl(img.url)}
+                        alt={`${product.name} view ${idx + 1}`}
+                        onError={(e) => (e.target.src = '/placeholder.png')}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ══ RIGHT — Details ══ */}
+            <div className="modal-right">
+
+              {/* Category */}
+              <div className="modal-category">
+                <Tag size={10} style={{ marginRight: 5 }} />
+                {product.category}
+              </div>
+
+              {/* Title — close button is absolute, title has padding-right */}
+              <h2 className="modal-title">{product.name}</h2>
+
+              {/* Price + Stock */}
+              <div className="modal-price-section">
+                <div className="modal-price">
+                  ₹{parseFloat(product.baseSellingPrice).toFixed(2)}
+                </div>
+                <div className={`modal-stock ${isOutOfStock ? 'out' : 'in'}`}>
+                  <Package size={14} />
+                  {isOutOfStock ? 'Out of Stock' : `${product.totalStock} in stock`}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="modal-description">
+                <h4>Description</h4>
+                <p>{product.description || 'No description available.'}</p>
+              </div>
+
+              <div className="modal-divider" />
+
+              {/* Quantity */}
+              {!isOutOfStock && (
+                <div className="quantity-selector">
+                  <label>Quantity</label>
+                  <div className="quantity-controls">
+                    <button
+                      onClick={() => handleQuantityChange(-1)}
+                      disabled={quantity <= 1}
+                      aria-label="Decrease quantity"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <span className="quantity-value">{quantity}</span>
+                    <button
+                      onClick={() => handleQuantityChange(1)}
+                      disabled={quantity >= maxQuantity}
+                      aria-label="Increase quantity"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                  <span className="max-qty">Max per order: {maxQuantity}</span>
+                </div>
+              )}
+
+              {/* Bargain */}
+              {!isOutOfStock && product.bargainable && eligibility?.canBargain && (
+                <button
+                  className="btn-modal-bargain"
+                  onClick={() => setShowBargainModal(true)}
+                >
+                  💰 Make an Offer
+                  {eligibility.metadata.remainingAttempts > 0 && (
+                    <span className="attempts-badge">
+                      {eligibility.metadata.remainingAttempts} attempts left
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {/* Buy Now */}
+              {!isOutOfStock && onBuyNow && (
+                <button
+                  className="btn-modal-buynow"
+                  onClick={() => onBuyNow(product)}
+                >
+                  <Zap size={16} />
+                  Buy Now
+                </button>
+              )}
+
+              {/* Cart + Wishlist OR Notify */}
+              <div className="modal-actions">
+                {isOutOfStock ? (
+                  <button
+                    className={`btn-modal-notify ${notified ? 'notified' : 'default'}`}
+                    onClick={handleNotifyMe}
+                    disabled={notifying || notified}
+                  >
+                    {notified ? (
+                      <><CheckCircle2 size={16} /> You'll be notified</>
+                    ) : notifying ? (
+                      <>Registering…</>
+                    ) : (
+                      <><Bell size={16} /> Notify Me When Available</>
+                    )}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      className="btn-modal-cart"
+                      onClick={handleAddToCart}
+                      disabled={addedFlash}
+                    >
+                      {addedFlash ? (
+                        <><CheckCircle2 size={17} /> Added!</>
+                      ) : (
+                        <><ShoppingCart size={17} /> Add to Cart</>
+                      )}
+                    </button>
+                    <button
+                      className={`btn-modal-wishlist ${isWishlisted ? 'wishlisted' : ''}`}
+                      onClick={() => { onToggleWishlist?.(product); onClose(); }}
+                    >
+                      <Heart size={17} fill={isWishlisted ? 'currentColor' : 'none'} />
+                      {isWishlisted ? 'Saved' : 'Wishlist'}
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Meta */}
+              <div className="product-meta-info">
+                <div className="meta-item"><strong>SKU:</strong> {product.id}</div>
+                <div className="meta-item"><strong>Category:</strong> {product.category}</div>
+                {product.subCategory && (
+                  <div className="meta-item"><strong>Sub-category:</strong> {product.subCategory}</div>
+                )}
+                <div className="meta-item">
+                  <strong>Status:</strong> {isOutOfStock ? 'Out of Stock' : 'In Stock'}
+                </div>
+
+                {product.createdBy && (
+                  <div className="seller-info-block">
+                    <div className="seller-avatar">👤</div>
+                    <div className="seller-info-text">
+                      <span className="seller-name">{product.createdBy.name}</span>
+                      <span className={`seller-role-badge ${product.createdBy.role === 'ADMIN' ? 'admin' : 'seller'}`}>
+                        {product.createdBy.role}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
-
-          {config && (
-            <div className="tier-pricing">
-              <h4>Price Tiers</h4>
-              <div className="tier-grid">
-                <div className="tier">
-                  <div className="tier-label">Tier 1</div>
-                  <div className="tier-price">₹{config.tier1Price}+</div>
-                </div>
-                <div className="tier">
-                  <div className="tier-label">Tier 2</div>
-                  <div className="tier-price">₹{config.tier2Price}+</div>
-                </div>
-                <div className="tier">
-                  <div className="tier-label">Tier 3</div>
-                  <div className="tier-price">₹{config.tier3Price}+</div>
-                </div>
-              </div>
-              <p className="tier-hint">
-                💡 Higher offers have better chance of acceptance
-              </p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="offeredPrice">Your Offer</label>
-              <div className="input-wrapper">
-                <span className="currency">₹</span>
-                <input
-                  type="number"
-                  id="offeredPrice"
-                  value={offeredPrice}
-                  onChange={(e) => setOfferedPrice(e.target.value)}
-                  placeholder="Enter your offer"
-                  min={config?.tier3Price || 1}
-                  max={basePrice}
-                  step="0.01"
-                  required
-                  disabled={loading}
-                />
-              </div>
-              <small className="hint">
-                Min: ₹{config?.tier3Price || 1} • Max: ₹{basePrice}
-              </small>
-            </div>
-
-            {error && (
-              <div className="error-message">
-                ⚠️ {error}
-              </div>
-            )}
-
-            <div className="attempts-info">
-              <span className="attempts-remaining">
-                {remainingAttempts} attempt(s) remaining
-              </span>
-            </div>
-
-            <div className="modal-actions">
-              <button
-                type="button"
-                onClick={onClose}
-                className="bargain-btn bargain-btn-secondary"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="bargain-btn bargain-btn-primary"
-                disabled={loading || !offeredPrice}
-              >
-                {loading ? 'Submitting...' : 'Submit Offer'}
-              </button>
-            </div>
-          </form>
-
-          {config?.cooldownMinutes > 0 && (
-            <div className="cooldown-info">
-              ⏱️ {config.cooldownMinutes} minute cooldown between attempts
-            </div>
-          )}
         </div>
       </div>
-    </div>
-  );
-};
 
-export default BargainModal;
+      {showBargainModal && eligibility && (
+        <BargainModal
+          isOpen={showBargainModal}
+          onClose={() => setShowBargainModal(false)}
+          product={product}
+          eligibility={eligibility}
+          onSuccess={handleBargainSuccess}
+        />
+      )}
+    </>
+  );
+}
