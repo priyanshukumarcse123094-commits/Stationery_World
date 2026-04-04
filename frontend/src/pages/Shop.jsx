@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useSearch } from '../context/SearchContext';
@@ -6,46 +6,80 @@ import Hero from '../components/shop/Hero';
 import CategoryStrip from '../components/shop/CategoryStrip';
 import ProductGrid from '../components/shop/ProductGrid';
 import ProductDetailModal from '../components/shop/ProductDetailModal';
-import { Loader, X, Search, CheckCircle, ShoppingBag } from 'lucide-react';
+import { Loader, X, Search, Sparkles } from 'lucide-react';
 import '../../Style/shop.css';
 import { API_BASE_URL } from '../config/constants';
 
 const API = API_BASE_URL;
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Fire-and-forget interaction tracker. Never throws. */
+const trackInteraction = (productId, type, searchTerm = null) => {
+  const token = localStorage.getItem('token');
+  if (!token || !productId) return;
+  fetch(`${API}/api/products/track-interaction`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ productId, type, searchTerm: searchTerm || undefined })
+  }).catch(() => {}); // silently ignore network errors
+};
+
+/** Debounce hook */
+const useDebounce = (value, delay) => {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function Shop() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [products, setProducts]               = useState([]);
+  const [loading, setLoading]                 = useState(true);
+  const [error, setError]                     = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('featured');
+  const [searchQuery, setSearchQuery]         = useState('');
+  const [sortBy, setSortBy]                   = useState('featured');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [activeSearch, setActiveSearch] = useState('');
-  const [searchDebounce, setSearchDebounce] = useState('');
+  const [activeSearch, setActiveSearch]       = useState('');
+  const [isPersonalised, setIsPersonalised]   = useState(false);
 
-  const { showToast } = useToast();
+  const { showToast }       = useToast();
   const [wishlistIds, setWishlistIds] = useState(new Set());
   const { registerSearchHandler, unregisterSearchHandler, searchQuery: topbarQuery, clearSearch } = useSearch();
-  const location = useLocation();
-  const [buyNowProduct, setBuyNowProduct] = useState(null);
-  const [buyNowQty, setBuyNowQty] = useState(1);
-  const [buyNowLoading, setBuyNowLoading] = useState(false);
-  const [buyNowForm, setBuyNowForm] = useState({
+  const location            = useLocation();
+  const [buyNowProduct, setBuyNowProduct]     = useState(null);
+  const [buyNowQty, setBuyNowQty]             = useState(1);
+  const [buyNowLoading, setBuyNowLoading]     = useState(false);
+  const [buyNowForm, setBuyNowForm]           = useState({
     recipientName: '', recipientPhone: '', addressLine1: '', addressLine2: '',
     city: '', state: '', postalCode: '', country: '', note: ''
   });
 
+  // Track whether a search was committed (Enter or clear search button)
+  const committedSearch = useDebounce(activeSearch, 350);
+  // In-grid search box (debounced separately for live filtering)
+  const debouncedSearchQuery = useDebounce(searchQuery, 350);
+
   const categories = useMemo(() => ['All', 'STATIONERY', 'BOOKS', 'TOYS'], []);
 
-  // Sidebar "Home" click resets page
+  const isLoggedIn = () => !!localStorage.getItem('token');
+
+  // ── Reset on sidebar "Home" click ─────────────────────────────────────────
   useEffect(() => {
     setSelectedCategory('All');
     setSortBy('featured');
     setActiveSearch('');
+    setSearchQuery('');
     clearSearch();
   }, [location.key, clearSearch]);
 
+  // ── Wishlist IDs ──────────────────────────────────────────────────────────
   const fetchWishlistIds = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
@@ -56,49 +90,48 @@ export default function Shop() {
     } catch {}
   }, []);
 
-  useEffect(() => {
-    fetchWishlistIds();
-  }, [fetchWishlistIds]);
+  useEffect(() => { fetchWishlistIds(); }, [fetchWishlistIds]);
 
-  // Topbar search: dropdown as you type
+  // ── Topbar search dropdown ────────────────────────────────────────────────
   useEffect(() => {
     const searchProducts = async (query) => {
       const trimmed = query.trim();
       if (!trimmed) return [];
 
-      const qs = new URLSearchParams({
-        audience: 'customer',
-        search: trimmed,
-        limit: '8'
-      });
-
-      const response = await fetch(`${API}/api/products?${qs.toString()}`);
+      const qs = new URLSearchParams({ search: trimmed, limit: '8' });
+      const response = await fetch(`${API}/api/products/customer/search?${qs}`);
       const result = await response.json();
       if (!result.success) return [];
 
-      return (result.data || [])
-        .map(p => ({
-          id: p.id,
-          title: p.name,
-          subtitle: `${p.category} · ₹${parseFloat(p.baseSellingPrice).toFixed(2)} · ${p.totalStock} in stock`,
-          badge: p.category,
-          onClick: () => { setSelectedProduct(p); setShowDetailModal(true); }
-        }));
+      return (result.data || []).map(p => ({
+        id: p.id,
+        title: p.name,
+        subtitle: `${p.category} · ₹${parseFloat(p.baseSellingPrice).toFixed(2)} · ${p.totalStock} in stock`,
+        badge: p.category,
+        // Pass the primary image URL so SearchDropdown can render it
+        image: p.images?.find(i => i.isPrimary)?.url || p.images?.[0]?.url || null,
+        onClick: () => {
+          setSelectedProduct(p);
+          setShowDetailModal(true);
+          // Track view + search signal
+          trackInteraction(p.id, 'VIEW');
+          trackInteraction(p.id, 'SEARCH', trimmed);
+        }
+      }));
     };
 
     registerSearchHandler('products', searchProducts, 'Search products… press Enter to filter page');
     return () => unregisterSearchHandler();
-  }, [products, registerSearchHandler, unregisterSearchHandler]);
+  }, [registerSearchHandler, unregisterSearchHandler]);
 
-  // Enter key commits search to the grid
+  // ── Enter key commits topbar search to the grid ───────────────────────────
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Enter') {
         const isTopbar = document.activeElement?.closest('.topbar-search');
         if (isTopbar && topbarQuery.trim()) {
-          const searchTerm = topbarQuery.trim();
-          setActiveSearch(searchTerm);
-          setSearchQuery(searchTerm);
+          setActiveSearch(topbarQuery.trim());
+          setSearchQuery(topbarQuery.trim());
         }
       }
     };
@@ -106,33 +139,70 @@ export default function Shop() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [topbarQuery]);
 
+  // ── Core product fetch ────────────────────────────────────────────────────
   const fetchProducts = useCallback(async ({ query = '' } = {}) => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        audience: 'customer',
-        limit: '20',
-        page: '1',
-      });
+      setIsPersonalised(false);
 
-      if (selectedCategory !== 'All') params.set('category', selectedCategory);
-      if (sortBy) params.set('sortBy', sortBy);
-
+      const token = localStorage.getItem('token');
       const trimmed = query.trim();
+
+      // ── A. Personalised recommendations (logged-in, no active search/filter) ──
+      if (token && !trimmed && selectedCategory === 'All' && sortBy === 'featured') {
+        try {
+          const recRes = await fetch(`${API}/api/products/recommended?limit=20`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const recResult = await recRes.json();
+          if (recResult.success && recResult.data?.length > 0) {
+            setProducts(recResult.data);
+            setIsPersonalised(true);
+            setError(null);
+            return;
+          }
+        } catch {
+          // Fall through to random products if recommendations fail
+        }
+      }
+
+      // ── B. Search mode ─────────────────────────────────────────────────────
       if (trimmed) {
-        params.set('search', trimmed);
-      } else {
-        params.set('random', 'true');
+        const params = new URLSearchParams({ search: trimmed, limit: '20', page: '1' });
+        if (selectedCategory !== 'All') params.set('category', selectedCategory);
+
+        const response = await fetch(`${API}/api/products/customer/search?${params}`);
+        const result   = await response.json();
+        if (!result.success) throw new Error(result.message);
+        setProducts(result.data || []);
+        setError(null);
+        return;
       }
 
-      const response = await fetch(`${API}/api/products?${params.toString()}`);
-      const result = await response.json();
+      // ── C. Browsing with filters / sort (uses customer canonical endpoint) ──
+      const params = new URLSearchParams({ limit: '20', page: '1' });
+      if (selectedCategory !== 'All') params.set('category', selectedCategory);
 
-      if (!result.success) {
-        throw new Error(result.message);
+      // For non-personalised browsing, random order makes refresh feel fresh
+      // The /customer endpoint already uses ORDER BY RANDOM() when no search.
+      const response = await fetch(`${API}/api/products/customer?${params}`);
+      const result   = await response.json();
+      if (!result.success) throw new Error(result.message);
+
+      // Client-side sort (the random order from DB is preserved for 'featured')
+      let data = result.data || [];
+      if (sortBy === 'newest') {
+        data = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      } else if (sortBy === 'price-low') {
+        data = [...data].sort((a, b) => parseFloat(a.baseSellingPrice) - parseFloat(b.baseSellingPrice));
+      } else if (sortBy === 'price-high') {
+        data = [...data].sort((a, b) => parseFloat(b.baseSellingPrice) - parseFloat(a.baseSellingPrice));
+      } else if (sortBy === 'name') {
+        data = [...data].sort((a, b) => a.name.localeCompare(b.name));
       }
+      // 'featured' keeps the random DB order — different every refresh ✓
 
-      setProducts(result.data || []);
+      setProducts(data);
       setError(null);
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -143,18 +213,14 @@ export default function Shop() {
     }
   }, [selectedCategory, sortBy, showToast]);
 
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      const effectiveSearchTerm = (activeSearch || searchQuery).trim();
-      setSearchDebounce(effectiveSearchTerm);
-    }, 350);
-    return () => window.clearTimeout(timeoutId);
-  }, [activeSearch, searchQuery]);
+  // Effective search = committed (Enter) or in-grid box, debounced
+  const effectiveSearch = committedSearch || debouncedSearchQuery;
 
   useEffect(() => {
-    fetchProducts({ query: searchDebounce });
-  }, [searchDebounce, fetchProducts]);
+    fetchProducts({ query: effectiveSearch });
+  }, [effectiveSearch, fetchProducts]);
 
+  // ── Featured hero product ─────────────────────────────────────────────────
   const featuredProduct = useMemo(() => {
     return products.find(p => p.totalStock > 0) || products[0];
   }, [products]);
@@ -165,45 +231,29 @@ export default function Shop() {
     clearSearch();
   };
 
-  // ✅ FIX: Use useCallback to stabilize the function
+  // ── Cart ──────────────────────────────────────────────────────────────────
   const handleAddToCart = useCallback(async (product) => {
-    console.log('🛒 handleAddToCart called for:', product.id, product.name);
-    
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         showToast('Please login to add items to cart', 'warning');
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 1500);
+        setTimeout(() => { window.location.href = '/'; }, 1500);
         return;
       }
-
       const response = await fetch(`${API}/api/cart`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          productId: product.id,
-          quantity: 1
-        })
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ productId: product.id, quantity: 1 })
       });
-
       const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.message);
-      }
-
+      if (!result.success) throw new Error(result.message);
       showToast(`${product.name} added to cart! 🛒`, 'success');
     } catch (err) {
-      console.error('Add to cart error:', err);
       showToast(err.message, 'error');
     }
-  }, [showToast]); // ✅ Add showToast as dependency
+  }, [showToast]);
 
+  // ── Wishlist ──────────────────────────────────────────────────────────────
   const handleToggleWishlist = useCallback(async (product) => {
     try {
       const token = localStorage.getItem('token');
@@ -212,13 +262,10 @@ export default function Shop() {
         setTimeout(() => { window.location.href = '/'; }, 1500);
         return;
       }
-
       const isWishlisted = wishlistIds.has(product.id);
-
       if (isWishlisted) {
         const res = await fetch(`${API}/api/wishlist/${product.id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` }
+          method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
         });
         const result = await res.json();
         if (!result.success) throw new Error(result.message);
@@ -240,11 +287,14 @@ export default function Shop() {
     }
   }, [showToast, wishlistIds]);
 
+  // ── Product view (track interaction) ─────────────────────────────────────
   const handleViewProduct = useCallback((product) => {
     setSelectedProduct(product);
     setShowDetailModal(true);
+    trackInteraction(product.id, 'VIEW');
   }, []);
 
+  // ── Buy Now ───────────────────────────────────────────────────────────────
   const handleBuyNow = useCallback((product) => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -272,19 +322,21 @@ export default function Shop() {
       });
       const cartResult = await cartRes.json();
       if (!cartResult.success) throw new Error(cartResult.message);
+
       const orderRes = await fetch(`${API}/api/orders`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(buyNowForm)
       });
       const orderResult = await orderRes.json();
       if (!orderResult.success) throw new Error(orderResult.message);
+
       const confirmRes = await fetch(`${API}/api/orders/${orderResult.data.id}/confirm`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}` }
       });
       const confirmResult = await confirmRes.json();
       if (!confirmResult.success) throw new Error(confirmResult.message);
+
       showToast(`Order #${orderResult.data.id} placed & confirmed!`, 'success');
-      // Notify admin dashboard to refresh immediately
       window.dispatchEvent(new CustomEvent('orderCreated', { detail: { orderId: orderResult.data.id } }));
       setBuyNowProduct(null);
     } catch (err) {
@@ -294,6 +346,7 @@ export default function Shop() {
     }
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="shop-page">
@@ -314,9 +367,7 @@ export default function Shop() {
           <div className="error-container">
             <h3>Error Loading Products</h3>
             <p>{error}</p>
-            <button className="btn primary" onClick={fetchProducts}>
-              Retry
-            </button>
+            <button className="btn primary" onClick={() => fetchProducts()}>Retry</button>
           </div>
         </div>
       </div>
@@ -325,11 +376,18 @@ export default function Shop() {
 
   return (
     <div className="shop-page">
-      {/* decorative floating emoji */}
       <div className="floating-emoji emoji-float">🎈</div>
       <Hero featured={featuredProduct} onShopNow={() => window.scrollTo({ top: 400, behavior: 'smooth' })} />
 
       <div className="card">
+
+        {/* Personalised banner */}
+        {isPersonalised && !activeSearch && (
+          <div className="personalised-banner">
+            <Sparkles size={14} />
+            Picked for you based on your browsing &amp; purchase history
+          </div>
+        )}
 
         {/* Active search banner */}
         {activeSearch && (
@@ -337,36 +395,27 @@ export default function Shop() {
             <Search size={15} />
             Results for <strong className="active-search-term">"{activeSearch}"</strong>
             &nbsp;— {products.length} match{products.length !== 1 ? 'es' : ''}
-            <button
-              className="active-search-clear"
-              onClick={clearActiveSearch}
-            >
+            <button className="active-search-clear" onClick={clearActiveSearch}>
               <X size={13} /> Clear
             </button>
           </div>
         )}
 
         <div className="shop-toolbar">
-          <CategoryStrip 
-            categories={categories} 
+          <CategoryStrip
+            categories={categories}
             selected={selectedCategory}
-            onSelect={setSelectedCategory} 
+            onSelect={setSelectedCategory}
           />
-
           <div className="search-and-sort">
             <div className="search-wrap">
-              <input 
-                placeholder="Search products..." 
-                value={searchQuery} 
-                onChange={e => setSearchQuery(e.target.value)} 
+              <input
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
-
-            <select 
-              className="sort-select" 
-              value={sortBy} 
-              onChange={e => setSortBy(e.target.value)}
-            >
+            <select className="sort-select" value={sortBy} onChange={e => setSortBy(e.target.value)}>
               <option value="featured">Featured</option>
               <option value="newest">Newest</option>
               <option value="price-low">Price: Low to High</option>
@@ -389,10 +438,11 @@ export default function Shop() {
         ) : (
           <>
             <div className="products-count">
-              Showing {products.length} {products.length === 1 ? 'product' : 'products'}
-              {activeSearch && ` for "${activeSearch}"`}
+              {isPersonalised && !activeSearch
+                ? `${products.length} personalised picks for you`
+                : `Showing ${products.length} ${products.length === 1 ? 'product' : 'products'}${activeSearch ? ` for "${activeSearch}"` : ''}`
+              }
             </div>
-
             <ProductGrid
               products={products}
               onAddToCart={handleAddToCart}
@@ -418,10 +468,8 @@ export default function Shop() {
 
       {/* Buy Now Modal */}
       {buyNowProduct && (
-        <div className="modal-overlay"
-          onClick={() => !buyNowLoading && setBuyNowProduct(null)}>
-          <div className="modal-content"
-            onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => !buyNowLoading && setBuyNowProduct(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <span className="emoji-large">🛍️</span>
               <div>
@@ -446,20 +494,40 @@ export default function Shop() {
             </div>
             <h4 className="modal-section-title">Delivery Details</h4>
             <div className="form-grid">
-              {[['Recipient Name *','recipientName','text'],['Phone','recipientPhone','tel'],['Address Line 1','addressLine1','text'],['Address Line 2','addressLine2','text'],['City','city','text'],['State','state','text'],['Postal Code','postalCode','text'],['Country','country','text']].map(([label, field, type]) => (
-                <div key={field} className={['addressLine1','addressLine2'].includes(field) ? 'span-2' : ''}>
+              {[
+                ['Recipient Name *', 'recipientName', 'text'],
+                ['Phone', 'recipientPhone', 'tel'],
+                ['Address Line 1', 'addressLine1', 'text'],
+                ['Address Line 2', 'addressLine2', 'text'],
+                ['City', 'city', 'text'],
+                ['State', 'state', 'text'],
+                ['Postal Code', 'postalCode', 'text'],
+                ['Country', 'country', 'text']
+              ].map(([label, field, type]) => (
+                <div key={field} className={['addressLine1', 'addressLine2'].includes(field) ? 'span-2' : ''}>
                   <label className="form-label">{label}</label>
-                  <input type={type} value={buyNowForm[field]} onChange={e => setBuyNowForm(f => ({ ...f, [field]: e.target.value }))} className="form-input" />
+                  <input
+                    type={type}
+                    value={buyNowForm[field]}
+                    onChange={e => setBuyNowForm(f => ({ ...f, [field]: e.target.value }))}
+                    className="form-input"
+                  />
                 </div>
               ))}
             </div>
             <div className="form-group">
               <label className="form-label">Note</label>
-              <textarea rows={2} value={buyNowForm.note} onChange={e => setBuyNowForm(f => ({ ...f, note: e.target.value }))} className="form-textarea" />
+              <textarea rows={2} value={buyNowForm.note}
+                onChange={e => setBuyNowForm(f => ({ ...f, note: e.target.value }))}
+                className="form-textarea" />
             </div>
             <div className="form-actions">
               <button onClick={() => setBuyNowProduct(null)} disabled={buyNowLoading} className="btn outline">Cancel</button>
-              <button onClick={handleBuyNowSubmit} disabled={buyNowLoading || !buyNowForm.recipientName} className="btn primary buy-now-submit">
+              <button
+                onClick={handleBuyNowSubmit}
+                disabled={buyNowLoading || !buyNowForm.recipientName}
+                className="btn primary buy-now-submit"
+              >
                 {buyNowLoading ? 'Placing...' : '🛍️ Place Order'}
               </button>
             </div>
