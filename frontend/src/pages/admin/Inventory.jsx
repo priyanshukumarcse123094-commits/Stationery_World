@@ -568,8 +568,9 @@ export default function Inventory() {
       const data = await res.json();
       if (data?.success) {
         alert('✅ Product created successfully!');
-        setSearch(''); setResults([]); setMode('idle'); setSelectedFiles([]); setFilePreviews([]);
-        setForm({ name:'', description:'', category: DEFAULT_CATEGORIES[0], subCategory:'', costPrice:'', baseSellingPrice:'', bargainable: true, keywords:'', bargainMaxAttempts:1, bargainTiers:[{price:''},{price:''},{price:''}], bulkDiscounts:[{minQty:'',discount:'',unit:'RUPEES'}], quantityAdded: 0, lowStockThreshold: 10 });
+        setSearch(''); setResults([]); setMode('add'); setSelected(null); setSelectedFiles([]); setFilePreviews([]);
+        setForm({ name:'', description:'', category: DEFAULT_CATEGORIES[0], subCategory:'', costPrice:'', baseSellingPrice:'', bargainable: true, keywords:'', bargainMaxAttempts:1, bargainTiers:[{price:''},{price:''},{price:''}], bulkDiscounts:[{minQty:'',discount:'',unit:'RUPEES'}], quantityAdded: 0, lowStockThreshold: 10, investmentSource: 'PROFIT' });
+        await refreshAllData();
       } else {
         alert('❌ ' + (data?.message || 'Create failed'));
       }
@@ -609,8 +610,9 @@ export default function Inventory() {
       const data = await res.json();
       if (data?.success) {
         alert('✅ Product updated successfully!');
-        setSearch(''); setResults([]); setMode('idle'); setSelected(null);
-        setForm({ name:'', description:'', category: DEFAULT_CATEGORIES[0], subCategory:'', costPrice:'', baseSellingPrice:'', bargainable: true, keywords:'', bargainMaxAttempts:1, bargainTiers:[{price:''},{price:''},{price:''}], bulkDiscounts:[{minQty:'',discount:'',unit:'RUPEES'}], quantityAdded: 0, lowStockThreshold: 10 });
+        setSearch(''); setResults([]); setMode('add'); setSelected(null);
+        setForm({ name:'', description:'', category: DEFAULT_CATEGORIES[0], subCategory:'', costPrice:'', baseSellingPrice:'', bargainable: true, keywords:'', bargainMaxAttempts:1, bargainTiers:[{price:''},{price:''},{price:''}], bulkDiscounts:[{minQty:'',discount:'',unit:'RUPEES'}], quantityAdded: 0, lowStockThreshold: 10, investmentSource: 'PROFIT' });
+        await refreshAllData();
       } else {
         alert('❌ ' + (data?.message || 'Update failed'));
       }
@@ -642,15 +644,39 @@ export default function Inventory() {
       });
       const data = await res.json();
       if (data?.success) {
-        alert(`✅ Restocked! New stock: ${data.data?.newStock ?? '—'}`);
-        setSearch(''); setResults([]); setMode('idle'); setSelected(null);
+        alert(`✅ Restocked! New stock: ${data.data?.newStock ?? data.data?.totalStock ?? '—'}`);
+        setSearch(''); setResults([]); setMode('add'); setSelected(null);
         setSelectedFiles([]); setFilePreviews([]);
+        setForm(f => ({ ...f, quantityAdded: 0 }));
+        await refreshAllData();
       } else {
         alert('❌ ' + (data?.message || 'Restock failed'));
       }
     } catch (err) { alert('❌ ' + err.message); }
     finally { setLoading(false); }
   }
+
+  /* ── refreshAllData: re-fetch view + low-stock lists (called after mutations) ── */
+  const refreshAllData = async () => {
+    try {
+      const token = authUtils.getToken();
+      const [prodRes, lowRes] = await Promise.all([
+        fetch(`${API}/api/products`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/api/inventory/low-stock`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+      const [prodData, lowData] = await Promise.all([prodRes.json(), lowRes.json()]);
+      if (prodData?.success) setInventoryList(prodData.data || []);
+      if (lowData?.success) {
+        setLowList((lowData.data || []).map(item => ({
+          ...item.product,
+          totalStock:        item.quantity ?? item.product?.totalStock,
+          lowStockThreshold: item.lowStockThreshold ?? item.product?.lowStockThreshold,
+          isLowStock:        item.isLowStock ?? true,
+          notifyMeCount:     item.notifyMeCount ?? 0,
+        })));
+      }
+    } catch (err) { console.error('refreshAllData error:', err); }
+  };
 
   /* ── fetch on tab change ── */
   useEffect(() => {
