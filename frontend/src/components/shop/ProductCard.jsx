@@ -1,120 +1,95 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, ShoppingCart, Eye, Zap, Bell } from 'lucide-react';
+import { Heart, ShoppingCart, Eye, Zap, Bell, CheckCircle2 } from 'lucide-react';
 import BargainModal from './BargainModal';
+import './ProductCard.css';
 import { API_BASE_URL } from '../../config/constants';
 
-export default function ProductCard({ product, variant = 'standard', onAddToCart, onToggleWishlist, onViewProduct, onBuyNow, isWishlisted = false }) {
-  // guard against undefined product to avoid blank render/crash
+export default function ProductCard({
+  product,
+  variant = 'standard',
+  onAddToCart,
+  onToggleWishlist,
+  onViewProduct,
+  onBuyNow,
+  isWishlisted = false,
+}) {
   if (!product) return null;
 
-  const [imageError, setImageError] = useState(false);
-  const [notifying, setNotifying] = useState(false);
-  const [notified, setNotified] = useState(false);
+  const [imageError, setImageError]                       = useState(false);
+  const [notifying, setNotifying]                         = useState(false);
+  const [notified, setNotified]                           = useState(false);
+  const [cartFlash, setCartFlash]                         = useState(false);
 
-  // ✨ BARGAIN FEATURE STATE
-  const [showBargainModal, setShowBargainModal] = useState(false);
-  const [eligibility, setEligibility] = useState(null);
-  const [checkingEligibility, setCheckingEligibility] = useState(false);
+  // Bargain state
+  const [showBargainModal, setShowBargainModal]           = useState(false);
+  const [eligibility, setEligibility]                     = useState(null);
+  const [checkingEligibility, setCheckingEligibility]     = useState(false);
 
+  /* ── Image URL ── */
   const getImageUrl = () => {
-    const primaryImage = product.images?.find(img => img.isPrimary)?.url ||
-                         product.images?.[0]?.url;
-    if (!primaryImage) return '/placeholder.png';
-    if (primaryImage.startsWith('http://') || primaryImage.startsWith('https://')) return primaryImage;
-    if (primaryImage.startsWith('/uploads')) return `${API_BASE_URL}${primaryImage}`;
-    return `${API_BASE_URL}${primaryImage}`;
+    const primary = product.images?.find((img) => img.isPrimary)?.url
+                 || product.images?.[0]?.url;
+    if (!primary) return '/placeholder.png';
+    if (primary.startsWith('http://') || primary.startsWith('https://')) return primary;
+    return `${API_BASE_URL}${primary}`;
   };
 
-  const imageUrl = getImageUrl();
+  const imageUrl     = getImageUrl();
   const isOutOfStock = product.totalStock === 0;
-  const isLowStock = product.totalStock > 0 && product.totalStock <= (product.lowStockThreshold || 10);
+  const isLowStock   = product.totalStock > 0 && product.totalStock <= (product.lowStockThreshold || 10);
 
-  // ✨ BARGAIN: Check eligibility on mount
+  /* ── Bargain eligibility ── */
   useEffect(() => {
-    // only run if product is defined
-    if (product?.bargainable && !isOutOfStock) {
-      checkBargainEligibility();
-    }
+    if (product?.bargainable && !isOutOfStock) checkBargainEligibility();
   }, [product?.id, product?.bargainable]);
 
-  // ✨ BARGAIN: Check if user is eligible
   const checkBargainEligibility = async () => {
     setCheckingEligibility(true);
     try {
-      const token = localStorage.getItem('token');
+      const token   = localStorage.getItem('token');
       const headers = { 'Content-Type': 'application/json' };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/bargain/eligibility/${product.id}`, {
-        method: 'GET',
-        headers
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        setEligibility(result.data);
-      }
-    } catch (error) {
-      console.error('Eligibility check failed:', error);
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res    = await fetch(`${API_BASE_URL}/api/bargain/eligibility/${product.id}`, { headers });
+      const result = await res.json();
+      if (result.success) setEligibility(result.data);
+    } catch (err) {
+      console.error('Eligibility check failed:', err);
     } finally {
       setCheckingEligibility(false);
     }
   };
 
-  // ✨ BARGAIN: Handle bargain button click
-  const handleBargainClick = (e) => {
-    e.stopPropagation();
-    setShowBargainModal(true);
-  };
-
-  // ✨ BARGAIN: Handle successful bargain
   const handleBargainSuccess = (data) => {
-    console.log('Bargain accepted:', data);
     alert(`Offer accepted at ₹${data.finalPrice}! Item added to cart.`);
-    checkBargainEligibility(); // Refresh eligibility
+    checkBargainEligibility();
   };
 
-  const handleWishlistClick = (e) => {
+  /* ── Cart flash ── */
+  const handleAddToCart = (e) => {
     e.stopPropagation();
-    if (onToggleWishlist) onToggleWishlist(product);
+    if (!onAddToCart) return;
+    onAddToCart(product);
+    setCartFlash(true);
+    setTimeout(() => setCartFlash(false), 1000);
   };
 
-  const handleBuyNow = (e) => {
-    e.stopPropagation();
-    if (onBuyNow) onBuyNow(product);
-  };
-
+  /* ── Notify ── */
   const handleNotifyMe = async (e) => {
     e.stopPropagation();
     setNotifying(true);
-
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        alert('Please login to get notified');
-        setNotifying(false);
-        return;
-      }
-
+      if (!token) { alert('Please login to get notified'); return; }
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-      const response = await fetch(`${API_BASE_URL}/api/products/${product.id}/notify`, {
+      const res  = await fetch(`${API_BASE_URL}/api/products/${product.id}/notify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          email: user.email
-        })
+        body: JSON.stringify({ email: user.email }),
       });
-
-      const result = await response.json();
-
+      const result = await res.json();
       if (result.success) {
         setNotified(true);
         setTimeout(() => setNotified(false), 3000);
@@ -132,66 +107,86 @@ export default function ProductCard({ product, variant = 'standard', onAddToCart
   return (
     <>
       <div className={`product-card ${variant} ${isOutOfStock ? 'out-of-stock' : ''}`}>
-        {/* Product Image */}
-        <div className="pc-image" onClick={() => onViewProduct && onViewProduct(product)}>
-          {/* Stock Badge inside image container so it never overlaps body content */}
-          {isOutOfStock && <div className="stock-badge out">Out of Stock</div>}
+
+        {/* ── Image ── */}
+        <div className="pc-image" onClick={() => onViewProduct?.(product)}>
+
+          {/* Stock badge */}
+          {isOutOfStock
+            ? <div className="stock-badge out">Out of Stock</div>
+            : isLowStock && <div className="stock-badge low">Only {product.totalStock} left</div>
+          }
+
           <img
             src={imageError ? '/placeholder.png' : imageUrl}
             alt={product.name}
             onError={() => setImageError(true)}
+            loading="lazy"
           />
+
+          {/* Hover overlay */}
           <div className="pc-overlay">
             <button
-              className={`pc-icon wishlist${isWishlisted ? ' active' : ''}`}
-              onClick={handleWishlistClick}
+              className={`pc-icon wishlist ${isWishlisted ? 'active' : ''}`}
+              onClick={(e) => { e.stopPropagation(); onToggleWishlist?.(product); }}
               aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-              title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+              title={isWishlisted ? 'Wishlisted' : 'Add to wishlist'}
             >
-              <Heart size={20} fill={isWishlisted ? 'currentColor' : 'none'} />
+              <Heart size={17} fill={isWishlisted ? 'currentColor' : 'none'} />
             </button>
+
             <button
               className="pc-icon view"
-              onClick={(e) => { e.stopPropagation(); onViewProduct && onViewProduct(product); }}
+              onClick={(e) => { e.stopPropagation(); onViewProduct?.(product); }}
               aria-label="Quick view"
               title="Quick view"
             >
-              <Eye size={20} />
+              <Eye size={17} />
             </button>
+
             <button
               className="pc-icon cart"
-              onClick={(e) => { e.stopPropagation(); onAddToCart && onAddToCart(product); }}
+              onClick={handleAddToCart}
+              disabled={isOutOfStock || cartFlash}
               aria-label="Add to cart"
               title="Add to cart"
-              disabled={isOutOfStock}
             >
-              <ShoppingCart size={20} />
+              {cartFlash ? <CheckCircle2 size={17} /> : <ShoppingCart size={17} />}
             </button>
           </div>
         </div>
 
-        {/* Product Body */}
+        {/* ── Body ── */}
         <div className="pc-body">
           <div className="pc-category">{product.category}</div>
-          <div className="pc-title" title={product.name}>{product.name}</div>
+
+          <div
+            className="pc-title"
+            title={product.name}
+            onClick={() => onViewProduct?.(product)}
+            style={{ cursor: 'pointer' }}
+          >
+            {product.name}
+          </div>
+
           <p className="pc-description">
-            {product.description?.substring(0, 60)}
-            {product.description?.length > 60 ? '...' : ''}
+            {product.description?.substring(0, 72)}
+            {product.description?.length > 72 ? '…' : ''}
           </p>
 
-          {/* Seller Badge */}
+          {/* Seller */}
           {product.createdBy && (
             <div className="seller-badge">
-              👤 by {product.createdBy.name}
-            </div>
-          )}
-          {/* special bargain badge if admin granted permission */}
-          {eligibility?.metadata?.grantedByAdmin && (
-            <div className="offer-badge">
-              🔑 Special Offer
+              👤 {product.createdBy.name}
             </div>
           )}
 
+          {/* Admin-granted special offer badge */}
+          {eligibility?.metadata?.grantedByAdmin && (
+            <div className="offer-badge">🔑 Special Offer</div>
+          )}
+
+          {/* Price */}
           <div className="pc-meta">
             <div className="pc-price">
               <span className="currency">₹</span>
@@ -199,11 +194,11 @@ export default function ProductCard({ product, variant = 'standard', onAddToCart
             </div>
           </div>
 
-          {/* ✨ BARGAIN BUTTON - Shows when eligible */}
+          {/* ✨ Bargain Button */}
           {!isOutOfStock && product.bargainable && eligibility?.canBargain && (
             <button
-              onClick={handleBargainClick}
               className="bargain-btn"
+              onClick={(e) => { e.stopPropagation(); setShowBargainModal(true); }}
             >
               💰 Make an Offer
               {eligibility.metadata.remainingAttempts > 0 && (
@@ -214,32 +209,28 @@ export default function ProductCard({ product, variant = 'standard', onAddToCart
             </button>
           )}
 
-          {/* Notify Me Button - Shows when out of stock */}
+          {/* Notify / Buy Now */}
           {isOutOfStock ? (
             <button
+              className={`notify-btn ${notified ? 'notified' : 'default'}`}
               onClick={handleNotifyMe}
               disabled={notifying || notified}
-              className={`notify-btn ${notified ? 'notified' : 'default'}`}
             >
               {notified ? (
-                <>✓ You'll be notified</>
+                <><CheckCircle2 size={13} /> Notified!</>
               ) : notifying ? (
-                <>Registering...</>
+                <>Registering…</>
               ) : (
-                <>
-                  <Bell size={14} />
-                  Notify Me
-                </>
+                <><Bell size={13} /> Notify Me</>
               )}
             </button>
           ) : (
-            /* Buy Now button - Shows when in stock and no bargain */
             !eligibility?.canBargain && onBuyNow && (
               <button
-                onClick={handleBuyNow}
                 className="buy-now-btn"
+                onClick={(e) => { e.stopPropagation(); onBuyNow(product); }}
               >
-                <Zap size={14} />
+                <Zap size={13} />
                 Buy Now
               </button>
             )
@@ -247,7 +238,7 @@ export default function ProductCard({ product, variant = 'standard', onAddToCart
         </div>
       </div>
 
-      {/* ✨ BARGAIN MODAL */}
+      {/* Bargain Modal */}
       {showBargainModal && eligibility && (
         <BargainModal
           isOpen={showBargainModal}
