@@ -60,17 +60,35 @@ export default function AdminShopping() {
     setError(null);
     try {
       const token = authUtils.getToken();
-      const res = await fetch(`${API}/api/products`, {
-        headers: { Authorization: `Bearer ${token}` }
+      // Always fetch fresh from DB - no cache
+      const res = await fetch(`${API}/api/products?_t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' }
       });
       const result = await res.json();
       if (!result.success) throw new Error(result.message);
+      // Keep ALL products in memory for search
       setProducts(result.data || []);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Search always hits the API/DB - never local cache
+  const searchFromAPI = useCallback(async (query) => {
+    if (!query.trim()) return;
+    setLoading(true);
+    try {
+      const token = authUtils.getToken();
+      const params = new URLSearchParams({ search: query.trim(), _t: Date.now() });
+      const res = await fetch(`${API}/api/products?${params}`, {
+        headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' }
+      });
+      const result = await res.json();
+      if (result.success) setProducts(result.data || []);
+    } catch (err) { console.error('Search error:', err); }
+    finally { setLoading(false); }
   }, []);
 
   // Fetch admin's current wishlist IDs on mount
@@ -198,47 +216,48 @@ export default function AdminShopping() {
 
   useEffect(() => { fetchProducts(); fetchWishlistIds(); }, [fetchProducts, fetchWishlistIds]);
 
-  // Topbar search: dropdown as you type
+  // Topbar search: always hits API/DB - no local cache
   useEffect(() => {
     const searchProducts = async (query) => {
-      const words = query.toLowerCase().trim().split(/\s+/);
-      return products
-        .filter(p =>
-          words.some(w =>
-            p.name.toLowerCase().includes(w) ||
-            p.description?.toLowerCase().includes(w) ||
-            p.category.toLowerCase().includes(w) ||
-            p.subCategory?.toLowerCase().includes(w) ||
-            p.keywords?.some(k => k.toLowerCase().includes(w))
-          )
-        )
-        .slice(0, 8)
-        .map(p => ({
+      const trimmed = query.trim();
+      if (!trimmed) return [];
+      try {
+        const token = authUtils.getToken();
+        const params = new URLSearchParams({ search: trimmed, limit: '8', _t: Date.now() });
+        const res = await fetch(`${API}/api/products?${params}`, {
+          headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' }
+        });
+        const result = await res.json();
+        if (!result.success) return [];
+        return (result.data || []).slice(0, 8).map(p => ({
           id: p.id,
           title: p.name,
           subtitle: `${p.category} · ₹${parseFloat(p.baseSellingPrice).toFixed(2)} · ${p.totalStock} in stock`,
           badge: p.category,
+          image: p.images?.find(i => i.isPrimary)?.url || p.images?.[0]?.url || null,
           onClick: () => { setSelectedProduct(p); setShowDetailModal(true); }
         }));
+      } catch { return []; }
     };
 
-    registerSearchHandler('products', searchProducts, 'Search products… press Enter to filter page');
+    registerSearchHandler('products', searchProducts, 'Search products… press Enter to filter');
     return () => unregisterSearchHandler();
-  }, [products, registerSearchHandler, unregisterSearchHandler]);
+  }, [registerSearchHandler, unregisterSearchHandler]);
 
-  // Enter key commits search to the grid
+  // Enter key commits search - refetch from API with search query
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = async (e) => {
       if (e.key === 'Enter') {
         const isTopbar = document.activeElement?.closest('.topbar-search');
         if (isTopbar && searchQuery.trim()) {
           setActiveSearch(searchQuery.trim());
+          await searchFromAPI(searchQuery.trim());
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchQuery]);
+  }, [searchQuery, searchFromAPI]);
 
   const filteredProducts = useMemo(() => {
     let list = [...products];
