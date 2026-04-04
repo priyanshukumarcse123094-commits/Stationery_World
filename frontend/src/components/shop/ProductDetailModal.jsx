@@ -108,7 +108,7 @@ export default function ProductDetailModal({
 
   return (
     <>
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label={product.name}>
         <div className="product-detail-modal" onClick={(e) => e.stopPropagation()}>
 
           {/* Close */}
@@ -251,7 +251,7 @@ export default function ProductDetailModal({
                 ) : (
                   <>
                     <button
-                      className="btn-modal-cart"
+                      className={`btn-modal-cart${addedFlash ? " success" : ""}`}
                       onClick={handleAddToCart}
                       disabled={addedFlash}
                     >
