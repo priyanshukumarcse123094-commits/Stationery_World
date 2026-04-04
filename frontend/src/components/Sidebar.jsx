@@ -29,11 +29,11 @@ const Sidebar = () => {
       <nav>
         <NavLink to="/admin/dashboard" className={({ isActive }) => isActive ? "active" : ""}>
           <span className="icon">🏠</span>
-          <span className="text">Home</span>
+          <span className="text">Dashboard</span>
         </NavLink>
         <NavLink to="/admin/reports" className={({ isActive }) => isActive ? "active" : ""}>
           <span className="icon">📊</span>
-          <span className="text">Monthly Reports</span>
+          <span className="text">Reports</span>
         </NavLink>
         <NavLink to="/admin/inventory" className={({ isActive }) => isActive ? "active" : ""}>
           <span className="icon">📦</span>
@@ -49,7 +49,7 @@ const Sidebar = () => {
         </NavLink>
         <NavLink to="/admin/bargain-requests" className={({ isActive }) => isActive ? "active" : ""}>
           <span className="icon">🤝</span>
-          <span className="text">Bargain Requests</span>
+          <span className="text">Bargain</span>
         </NavLink>
         <NavLink to="/admin/shopping" className={({ isActive }) => isActive ? "active" : ""}>
           <span className="icon">🛒</span>
@@ -57,7 +57,12 @@ const Sidebar = () => {
         </NavLink>
         <NavLink to="/admin/wishlist" className={({ isActive }) => isActive ? "active" : ""}>
           <span className="icon">💖</span>
-          <span className="text">Wishlist Products</span>
+          <span className="text">Wishlist</span>
+        </NavLink>
+        <div className="sidebar-divider" />
+        <NavLink to="/admin/profile" className={({ isActive }) => isActive ? "active" : ""}>
+          <span className="icon">👤</span>
+          <span className="text">Profile</span>
         </NavLink>
       </nav>
     </aside>
