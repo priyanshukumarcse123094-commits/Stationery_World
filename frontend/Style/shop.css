@@ -921,6 +921,32 @@
 .buy-now-info .price { color: var(--text-secondary); }
 .qty-btn { border-color: var(--border); background: var(--bg-surface); }
 
+/*
+ * ─────────────────────────────────────────────────────────────────────────────
+ * ADD TO shop.css
+ * Personalised banner that appears above the grid when recommendations are shown
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+.personalised-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  width: fit-content;
+}
+
+.personalised-banner svg {
+  color: #C9922A;   /* warm gold — matches the store's editorial accent */
+  flex-shrink: 0;
+}
 
 .buy-now-submit {
   padding: 11px 0;
