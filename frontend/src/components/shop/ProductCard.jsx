@@ -124,24 +124,25 @@ export default function ProductCard({
             loading="lazy"
           />
 
-          {/* Hover overlay */}
-          <div className="pc-overlay">
-            <button
-              className={`pc-icon wishlist ${isWishlisted ? 'active' : ''}`}
-              onClick={(e) => { e.stopPropagation(); onToggleWishlist?.(product); }}
-              aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-              title={isWishlisted ? 'Wishlisted' : 'Add to wishlist'}
-            >
-              <Heart size={17} fill={isWishlisted ? 'currentColor' : 'none'} />
-            </button>
+          {/* Wishlist corner badge — always visible when wishlisted, hover otherwise */}
+          <button
+            className={`pc-wishlist-corner ${isWishlisted ? 'active' : ''}`}
+            onClick={(e) => { e.stopPropagation(); onToggleWishlist?.(product); }}
+            aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            title={isWishlisted ? 'Wishlisted' : 'Add to wishlist'}
+          >
+            <Heart size={15} fill={isWishlisted ? 'currentColor' : 'none'} />
+          </button>
 
+          {/* Hover overlay — view + cart actions */}
+          <div className="pc-overlay">
             <button
               className="pc-icon view"
               onClick={(e) => { e.stopPropagation(); onViewProduct?.(product); }}
               aria-label="Quick view"
               title="Quick view"
             >
-              <Eye size={17} />
+              <Eye size={14} /> <span>View</span>
             </button>
 
             <button
@@ -151,7 +152,8 @@ export default function ProductCard({
               aria-label="Add to cart"
               title="Add to cart"
             >
-              {cartFlash ? <CheckCircle2 size={17} /> : <ShoppingCart size={17} />}
+              {cartFlash ? <CheckCircle2 size={14} /> : <ShoppingCart size={14} />}
+              <span>{cartFlash ? 'Added' : 'Cart'}</span>
             </button>
           </div>
         </div>
