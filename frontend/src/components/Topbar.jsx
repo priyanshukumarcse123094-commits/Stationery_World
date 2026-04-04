@@ -167,6 +167,12 @@ const Topbar = ({
             value={searchQuery}
             onChange={handleSearchChange}
             onFocus={() => searchQuery.trim() && setShowSearchDropdown(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') { clearSearch(); setShowSearchDropdown(false); }
+              if (e.key === 'Enter') { setShowSearchDropdown(false); }
+            }}
+            autoComplete="off"
+            spellCheck="false"
           />
           {searchQuery && (
             <button className="search-clear" onClick={() => { clearSearch(); setShowSearchDropdown(false); }} aria-label="Clear">
