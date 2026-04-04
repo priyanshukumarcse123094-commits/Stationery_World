@@ -22,7 +22,7 @@ const trackInteraction = (productId, type, searchTerm = null) => {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ productId, type, searchTerm: searchTerm || undefined })
-  }).catch(() => {});
+  }).catch(() => {}); // silently ignore network errors
 };
 
 /** Debounce hook */
@@ -61,10 +61,14 @@ export default function Shop() {
     city: '', state: '', postalCode: '', country: '', note: ''
   });
 
-  const committedSearch      = useDebounce(activeSearch, 350);
+  // Track whether a search was committed (Enter or clear search button)
+  const committedSearch = useDebounce(activeSearch, 350);
+  // In-grid search box (debounced separately for live filtering)
   const debouncedSearchQuery = useDebounce(searchQuery, 350);
 
   const categories = useMemo(() => ['All', 'STATIONERY', 'BOOKS', 'TOYS'], []);
+
+  const isLoggedIn = () => !!localStorage.getItem('token');
 
   // ── Reset on sidebar "Home" click ─────────────────────────────────────────
   useEffect(() => {
@@ -94,8 +98,10 @@ export default function Shop() {
       const trimmed = query.trim();
       if (!trimmed) return [];
 
-      const qs = new URLSearchParams({ search: trimmed, limit: '8' });
-      const response = await fetch(`${API}/api/products/customer/search?${qs}`);
+      // Use the unrestricted /api/products endpoint so search covers ALL products
+      // in the DB — including inactive or out-of-stock ones.
+      const qs = new URLSearchParams({ search: trimmed });
+      const response = await fetch(`${API}/api/products?${qs}`);
       const result = await response.json();
       if (!result.success) return [];
 
@@ -104,10 +110,12 @@ export default function Shop() {
         title: p.name,
         subtitle: `${p.category} · ₹${parseFloat(p.baseSellingPrice).toFixed(2)} · ${p.totalStock} in stock`,
         badge: p.category,
+        // Pass the primary image URL so SearchDropdown can render it
         image: p.images?.find(i => i.isPrimary)?.url || p.images?.[0]?.url || null,
         onClick: () => {
           setSelectedProduct(p);
           setShowDetailModal(true);
+          // Track view + search signal
           trackInteraction(p.id, 'VIEW');
           trackInteraction(p.id, 'SEARCH', trimmed);
         }
@@ -118,7 +126,7 @@ export default function Shop() {
     return () => unregisterSearchHandler();
   }, [registerSearchHandler, unregisterSearchHandler]);
 
-  // ── Enter key commits topbar search ──────────────────────────────────────
+  // ── Enter key commits topbar search to the grid ───────────────────────────
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Enter') {
@@ -142,7 +150,7 @@ export default function Shop() {
       const token = localStorage.getItem('token');
       const trimmed = query.trim();
 
-      // A. Personalised recommendations
+      // ── A. Personalised recommendations (logged-in, no active search/filter) ──
       if (token && !trimmed && selectedCategory === 'All' && sortBy === 'featured') {
         try {
           const recRes = await fetch(`${API}/api/products/recommended?limit=20`, {
@@ -155,15 +163,17 @@ export default function Shop() {
             setError(null);
             return;
           }
-        } catch {}
+        } catch {
+          // Fall through to random products if recommendations fail
+        }
       }
 
-      // B. Search mode
+      // ── B. Search mode — hits /api/products which searches ALL products ──────
       if (trimmed) {
-        const params = new URLSearchParams({ search: trimmed, limit: '20', page: '1' });
+        const params = new URLSearchParams({ search: trimmed });
         if (selectedCategory !== 'All') params.set('category', selectedCategory);
 
-        const response = await fetch(`${API}/api/products/customer/search?${params}`);
+        const response = await fetch(`${API}/api/products?${params}`);
         const result   = await response.json();
         if (!result.success) throw new Error(result.message);
         setProducts(result.data || []);
@@ -171,14 +181,17 @@ export default function Shop() {
         return;
       }
 
-      // C. Browsing with filters / sort
+      // ── C. Browsing with filters / sort (uses customer canonical endpoint) ──
       const params = new URLSearchParams({ limit: '20', page: '1' });
       if (selectedCategory !== 'All') params.set('category', selectedCategory);
 
+      // For non-personalised browsing, random order makes refresh feel fresh
+      // The /customer endpoint already uses ORDER BY RANDOM() when no search.
       const response = await fetch(`${API}/api/products/customer?${params}`);
       const result   = await response.json();
       if (!result.success) throw new Error(result.message);
 
+      // Client-side sort (the random order from DB is preserved for 'featured')
       let data = result.data || [];
       if (sortBy === 'newest') {
         data = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -189,6 +202,7 @@ export default function Shop() {
       } else if (sortBy === 'name') {
         data = [...data].sort((a, b) => a.name.localeCompare(b.name));
       }
+      // 'featured' keeps the random DB order — different every refresh ✓
 
       setProducts(data);
       setError(null);
@@ -201,12 +215,14 @@ export default function Shop() {
     }
   }, [selectedCategory, sortBy, showToast]);
 
+  // Effective search = committed (Enter) or in-grid box, debounced
   const effectiveSearch = committedSearch || debouncedSearchQuery;
 
   useEffect(() => {
     fetchProducts({ query: effectiveSearch });
   }, [effectiveSearch, fetchProducts]);
 
+  // ── Featured hero product ─────────────────────────────────────────────────
   const featuredProduct = useMemo(() => {
     return products.find(p => p.totalStock > 0) || products[0];
   }, [products]);
@@ -273,7 +289,7 @@ export default function Shop() {
     }
   }, [showToast, wishlistIds]);
 
-  // ── View product ──────────────────────────────────────────────────────────
+  // ── Product view (track interaction) ─────────────────────────────────────
   const handleViewProduct = useCallback((product) => {
     setSelectedProduct(product);
     setShowDetailModal(true);
@@ -338,7 +354,7 @@ export default function Shop() {
       <div className="shop-page">
         <div className="card">
           <div className="loading-container">
-            <Loader className="spin" size={44} />
+            <Loader className="spin" size={48} />
             <p>Loading products...</p>
           </div>
         </div>
@@ -363,18 +379,14 @@ export default function Shop() {
   return (
     <div className="shop-page">
       <div className="floating-emoji emoji-float">🎈</div>
-
-      <Hero
-        featured={featuredProduct}
-        onShopNow={() => window.scrollTo({ top: 400, behavior: 'smooth' })}
-      />
+      <Hero featured={featuredProduct} onShopNow={() => window.scrollTo({ top: 400, behavior: 'smooth' })} />
 
       <div className="card">
 
         {/* Personalised banner */}
         {isPersonalised && !activeSearch && (
           <div className="personalised-banner">
-            <Sparkles size={13} />
+            <Sparkles size={14} />
             Picked for you based on your browsing &amp; purchase history
           </div>
         )}
@@ -382,11 +394,11 @@ export default function Shop() {
         {/* Active search banner */}
         {activeSearch && (
           <div className="active-search-banner">
-            <Search size={14} />
+            <Search size={15} />
             Results for <strong className="active-search-term">"{activeSearch}"</strong>
             &nbsp;— {products.length} match{products.length !== 1 ? 'es' : ''}
             <button className="active-search-clear" onClick={clearActiveSearch}>
-              <X size={12} /> Clear
+              <X size={13} /> Clear
             </button>
           </div>
         )}
@@ -405,11 +417,7 @@ export default function Shop() {
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
-            <select
-              className="sort-select"
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value)}
-            >
+            <select className="sort-select" value={sortBy} onChange={e => setSortBy(e.target.value)}>
               <option value="featured">Featured</option>
               <option value="newest">Newest</option>
               <option value="price-low">Price: Low to High</option>
@@ -422,11 +430,7 @@ export default function Shop() {
         {products.length === 0 ? (
           <div className="no-products">
             <h3>No products found</h3>
-            <p>
-              {activeSearch
-                ? `No matches for "${activeSearch}"`
-                : 'Try adjusting your search or filters'}
-            </p>
+            <p>{activeSearch ? `No matches for "${activeSearch}"` : 'Try adjusting your search or filters'}</p>
             {activeSearch && (
               <button className="btn primary mt-16" onClick={clearActiveSearch}>
                 Show all products
@@ -453,7 +457,6 @@ export default function Shop() {
         )}
       </div>
 
-      {/* Product Detail Modal */}
       {showDetailModal && selectedProduct && (
         <ProductDetailModal
           product={selectedProduct}
@@ -467,58 +470,31 @@ export default function Shop() {
 
       {/* Buy Now Modal */}
       {buyNowProduct && (
-        <div
-          className="modal-overlay"
-          onClick={() => !buyNowLoading && setBuyNowProduct(null)}
-        >
+        <div className="modal-overlay" onClick={() => !buyNowLoading && setBuyNowProduct(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
-
             <div className="modal-header">
               <span className="emoji-large">🛍️</span>
               <div>
                 <h3>Buy Now</h3>
                 <p>{buyNowProduct.name}</p>
               </div>
-              <button
-                onClick={() => setBuyNowProduct(null)}
-                className="modal-close-btn"
-              >
-                ×
-              </button>
+              <button onClick={() => setBuyNowProduct(null)} className="modal-close-btn">×</button>
             </div>
-
             <div className="buy-now-info">
               <div className="name">{buyNowProduct.name}</div>
-              <div className="price">
-                ₹{parseFloat(buyNowProduct.baseSellingPrice).toFixed(2)} each
-              </div>
+              <div className="price">₹{parseFloat(buyNowProduct.baseSellingPrice).toFixed(2)} each</div>
               <div className="qty-controls">
                 <span className="qty-label">Qty:</span>
-                <button
-                  onClick={() => setBuyNowQty(q => Math.max(1, q - 1))}
-                  className="qty-btn"
-                >
-                  −
-                </button>
+                <button onClick={() => setBuyNowQty(q => Math.max(1, q - 1))} className="qty-btn">−</button>
                 <span className="qty-display">{buyNowQty}</span>
-                <button
-                  onClick={() => setBuyNowQty(q => Math.min(buyNowProduct.totalStock, q + 1))}
-                  className="qty-btn"
-                >
-                  +
-                </button>
+                <button onClick={() => setBuyNowQty(q => Math.min(buyNowProduct.totalStock, q + 1))} className="qty-btn">+</button>
               </div>
             </div>
-
             <div className="modal-footer">
               <span className="text-muted">Total: </span>
-              <strong className="text-danger">
-                ₹{(parseFloat(buyNowProduct.baseSellingPrice) * buyNowQty).toFixed(2)}
-              </strong>
+              <strong className="text-danger">₹{(parseFloat(buyNowProduct.baseSellingPrice) * buyNowQty).toFixed(2)}</strong>
             </div>
-
             <h4 className="modal-section-title">Delivery Details</h4>
-
             <div className="form-grid">
               {[
                 ['Recipient Name *', 'recipientName', 'text'],
@@ -528,12 +504,9 @@ export default function Shop() {
                 ['City', 'city', 'text'],
                 ['State', 'state', 'text'],
                 ['Postal Code', 'postalCode', 'text'],
-                ['Country', 'country', 'text'],
+                ['Country', 'country', 'text']
               ].map(([label, field, type]) => (
-                <div
-                  key={field}
-                  className={['addressLine1', 'addressLine2'].includes(field) ? 'span-2' : ''}
-                >
+                <div key={field} className={['addressLine1', 'addressLine2'].includes(field) ? 'span-2' : ''}>
                   <label className="form-label">{label}</label>
                   <input
                     type={type}
@@ -544,25 +517,14 @@ export default function Shop() {
                 </div>
               ))}
             </div>
-
             <div className="form-group">
               <label className="form-label">Note</label>
-              <textarea
-                rows={2}
-                value={buyNowForm.note}
+              <textarea rows={2} value={buyNowForm.note}
                 onChange={e => setBuyNowForm(f => ({ ...f, note: e.target.value }))}
-                className="form-textarea"
-              />
+                className="form-textarea" />
             </div>
-
             <div className="form-actions">
-              <button
-                onClick={() => setBuyNowProduct(null)}
-                disabled={buyNowLoading}
-                className="btn outline"
-              >
-                Cancel
-              </button>
+              <button onClick={() => setBuyNowProduct(null)} disabled={buyNowLoading} className="btn outline">Cancel</button>
               <button
                 onClick={handleBuyNowSubmit}
                 disabled={buyNowLoading || !buyNowForm.recipientName}
@@ -571,7 +533,6 @@ export default function Shop() {
                 {buyNowLoading ? 'Placing...' : '🛍️ Place Order'}
               </button>
             </div>
-
           </div>
         </div>
       )}
