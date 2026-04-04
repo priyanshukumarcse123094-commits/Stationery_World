@@ -55,18 +55,14 @@
   border-radius: var(--modal-radius-lg);
   width: min(1080px, calc(100vw - 32px));
   max-height: 92vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  /* ✅ No overflow here — moved to .modal-content so sticky works */
+  overflow: hidden;
   position: relative;
   box-shadow: var(--modal-shadow-xl);
   animation: modalIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
-  scrollbar-width: thin;
-  scrollbar-color: #d1d5db transparent;
+  display: flex;
+  flex-direction: column;
 }
-
-.product-detail-modal::-webkit-scrollbar        { width: 4px; }
-.product-detail-modal::-webkit-scrollbar-track  { background: transparent; }
-.product-detail-modal::-webkit-scrollbar-thumb  { background: #d1d5db; border-radius: 4px; }
 
 @keyframes modalIn {
   from { transform: translateY(40px) scale(0.97); opacity: 0; }
@@ -105,7 +101,18 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
+  /* ✅ Scroll lives HERE so position:sticky on modal-left has a proper ancestor */
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
 }
+
+.modal-content::-webkit-scrollbar        { width: 4px; }
+.modal-content::-webkit-scrollbar-track  { background: transparent; }
+.modal-content::-webkit-scrollbar-thumb  { background: #d1d5db; border-radius: 4px; }
 
 .modal-left,
 .modal-right { min-width: 0; }
@@ -121,8 +128,14 @@
   background: var(--modal-muted);
   border-right: 1px solid var(--modal-border);
   border-radius: var(--modal-radius-lg) 0 0 var(--modal-radius-lg);
+  /* ✅ These two lines make sticky work inside the grid scroll container */
   position: sticky;
   top: 0;
+  align-self: start;
+  /* cap height so it never overflows viewport */
+  max-height: 92vh;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
 
 .main-image {
@@ -610,6 +623,13 @@
 @media (max-width: 960px) {
   .modal-content {
     grid-template-columns: 1fr;
+    /* On single-column, drop sticky — just normal flow scroll */
+    overflow-y: visible;
+  }
+
+  /* The modal shell takes back overflow responsibility on mobile */
+  .product-detail-modal {
+    overflow-y: auto;
   }
 
   .modal-left {
@@ -617,7 +637,11 @@
     border-bottom: 1px solid var(--modal-border);
     border-radius: var(--modal-radius-lg) var(--modal-radius-lg) 0 0;
     padding: 24px 24px 20px;
+    /* ✅ Drop sticky — single column stacks top-to-bottom */
     position: static;
+    align-self: auto;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .main-image {
@@ -641,6 +665,7 @@
     border-radius: 20px 20px 0 0;
     max-height: 96vh;
     width: 100%;
+    overflow-y: auto;
   }
 
   .modal-left  { padding: 18px 18px 14px; }
