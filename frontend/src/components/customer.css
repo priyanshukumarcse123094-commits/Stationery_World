@@ -168,3 +168,50 @@
   from { opacity: 0.6; }
   to   { opacity: 1; }
 }
+
+/* ── Customer Layout smooth theme transition ── */
+.customer-layout,
+.customer-layout *,
+.customer-main,
+.customer-content {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ── Customer sidebar smooth open/close ── */
+.customer-sidebar nav a {
+  transition: background 0.22s ease,
+              color 0.22s ease,
+              transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.customer-sidebar nav a:hover {
+  transform: translateX(5px);
+}
+.customer-sidebar nav a .cs-icon {
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: inline-block;
+}
+.customer-sidebar nav a:hover .cs-icon {
+  transform: scale(1.20);
+}
+
+/* ── Customer content area dark mode ── */
+[data-theme="dark"] .customer-main {
+  background: var(--bg-base);
+}
+[data-theme="dark"] .customer-content {
+  background: var(--bg-base);
+}
+
+/* ── Customer sidebar backdrop smooth ── */
+.customer-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(2px);
+  z-index: 299;
+  animation: backdropIn 0.22s ease both;
+}
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
