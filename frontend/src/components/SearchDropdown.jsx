@@ -7,11 +7,8 @@ export default function SearchDropdown({ results, isSearching, query, onClose, r
   const navigate = useNavigate();
 
   const handleResultClick = (result) => {
-    if (result.onClick) {
-      result.onClick();
-    } else if (result.path) {
-      navigate(result.path);
-    }
+    if (result.onClick) result.onClick();
+    else if (result.path) navigate(result.path);
     onClose();
   };
 
@@ -29,9 +26,7 @@ export default function SearchDropdown({ results, isSearching, query, onClose, r
   if (results.length === 0) {
     return (
       <div className="search-dropdown">
-        <div className="search-empty">
-          No results found for "{query}"
-        </div>
+        <div className="search-empty">No results found for "{query}"</div>
       </div>
     );
   }
@@ -50,17 +45,29 @@ export default function SearchDropdown({ results, isSearching, query, onClose, r
           >
             {resultRenderer ? resultRenderer(result) : (
               <div className="search-result-default">
-                {result.image && (
-                  <img src={result.image} alt={result.title} className="result-image" />
-                )}
+                {/* Text content on the left */}
                 <div className="result-content">
                   <div className="result-title">{result.title}</div>
                   {result.subtitle && (
                     <div className="result-subtitle">{result.subtitle}</div>
                   )}
+                  {result.badge && (
+                    <span className="result-badge">{result.badge}</span>
+                  )}
                 </div>
-                {result.badge && (
-                  <span className="result-badge">{result.badge}</span>
+
+                {/* Product thumbnail on the right */}
+                {result.image ? (
+                  <img
+                    src={result.image}
+                    alt={result.title}
+                    className="result-thumbnail"
+                    onError={e => { e.currentTarget.style.display = 'none'; }}
+                  />
+                ) : (
+                  <div className="result-thumbnail result-thumbnail--placeholder">
+                    <span>{result.badge?.[0] || '📦'}</span>
+                  </div>
                 )}
               </div>
             )}
