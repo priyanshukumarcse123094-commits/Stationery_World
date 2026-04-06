@@ -34,17 +34,17 @@ export default function You() {
   const [newPhoto, setNewPhoto] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  // redirect when not logged in
-  if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
-
   // Load user data
   useEffect(() => {
     const userData = authUtils.getUser();
     setUser(userData);
     setEditValues(userData || {});
   }, []);
+
+  // redirect when not logged in
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   // Handle field edit start
   const startEdit = (field) => {
