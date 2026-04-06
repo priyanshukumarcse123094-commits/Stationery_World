@@ -58,6 +58,25 @@ export const API_ENDPOINTS = {
   PAYMENT_INITIATE: '/api/payments/initiate',
   PAYMENT_VERIFY: '/api/payments/verify',
   PAYMENT_STATUS: (orderId) => `/api/payments/${orderId}`,
+  // UPI / QR payment settings
+  PAYMENT_UPI_SETTINGS_ADMIN: '/api/payments/admin/upi-settings',
+  PAYMENT_UPI_SETTINGS: (adminId) => `/api/payments/upi-settings/${adminId}`,
+  PAYMENT_ORDER_UPI_SETTINGS: (orderId) => `/api/payments/order/${orderId}/upi-settings`,
+
+  // Products — customer catalog & smart search
+  PRODUCTS_CUSTOMER: '/api/products/customer',
+  PRODUCTS_CUSTOMER_SEARCH: '/api/products/customer/search',
+  PRODUCTS_TRACK_INTERACTION: '/api/products/track-interaction',
+  PRODUCTS_RECOMMENDED: '/api/products/recommended',
+  PRODUCT_NOTIFY: (id) => `/api/products/${id}/notify`,
+  PRODUCT_IMAGES: (id) => `/api/products/${id}/images`,
+  PRODUCT_IMAGE_DELETE: (id, imageId) => `/api/products/${id}/images/${imageId}`,
+
+  // Variant groups
+  VARIANT_GROUPS: '/api/products/variant-groups',
+  VARIANT_GROUP_BY_ID: (groupId) => `/api/products/variant-groups/${groupId}`,
+  VARIANT_GROUP_ADD_PRODUCT: (groupId, productId) => `/api/products/variant-groups/${groupId}/products/${productId}`,
+  VARIANT_GROUP_REMOVE_PRODUCT: (productId) => `/api/products/variant-groups/products/${productId}`,
   
   // Admin - Inventory
   INVENTORY: '/api/inventory',
