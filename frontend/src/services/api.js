@@ -16,9 +16,22 @@ const apiFetch = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(url, config);
+
+    // ── Sliding-window JWT: backend issues a fresh token on every authenticated
+    //    request via the x-new-token header. Replace stored token transparently.
+    const freshToken = response.headers.get('x-new-token');
+    if (freshToken) {
+      authUtils.setToken(freshToken);
+    }
+
     const data = await response.json();
 
     if (!response.ok) {
+      // If backend signals inactivity session expiry, force logout
+      if (response.status === 401 && data?.code === 'SESSION_INACTIVE') {
+        authUtils.logout();
+        window.location.href = '/';
+      }
       throw new Error(data.message || 'API request failed');
     }
 
@@ -298,6 +311,130 @@ export const apiService = {
 
     getStatus: async (orderId) => {
       return await apiFetch(API_ENDPOINTS.PAYMENT_STATUS(orderId));
+    },
+
+    // UPI / QR settings (admin sets their UPI, customers see to pay)
+    setUpiSettings: async (formData) => {
+      const token = authUtils.getToken();
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PAYMENT_UPI_SETTINGS_ADMIN}`, {
+        method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData, // FormData with upiId, displayName, qrCode (file)
+      });
+      const freshToken = response.headers.get('x-new-token');
+      if (freshToken) authUtils.setToken(freshToken);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to update UPI settings');
+      return data;
+    },
+
+    getUpiSettings: async (adminId) => {
+      return await apiFetch(API_ENDPOINTS.PAYMENT_UPI_SETTINGS(adminId));
+    },
+
+    getOrderUpiSettings: async (orderId) => {
+      return await apiFetch(API_ENDPOINTS.PAYMENT_ORDER_UPI_SETTINGS(orderId));
+    },
+  },
+
+  // =====================
+  // PRODUCT VARIANT GROUPS
+  // =====================
+  variantGroups: {
+    getAll: async () => {
+      return await apiFetch(API_ENDPOINTS.VARIANT_GROUPS);
+    },
+
+    getById: async (groupId) => {
+      return await apiFetch(API_ENDPOINTS.VARIANT_GROUP_BY_ID(groupId));
+    },
+
+    create: async ({ name, variantType, description }) => {
+      return await apiFetch(API_ENDPOINTS.VARIANT_GROUPS, {
+        method: 'POST',
+        body: JSON.stringify({ name, variantType, description }),
+      });
+    },
+
+    addProduct: async (groupId, productId) => {
+      return await apiFetch(API_ENDPOINTS.VARIANT_GROUP_ADD_PRODUCT(groupId, productId), {
+        method: 'POST',
+      });
+    },
+
+    removeProduct: async (productId) => {
+      return await apiFetch(API_ENDPOINTS.VARIANT_GROUP_REMOVE_PRODUCT(productId), {
+        method: 'DELETE',
+      });
+    },
+  },
+
+  // =====================
+  // CUSTOMER CATALOG + SMART SEARCH
+  // =====================
+  catalog: {
+    // Fetch active products for the shop (supports ?random=true, ?category=, ?search=, paging)
+    getProducts: async (params) => {
+      const qs = params ? `?${new URLSearchParams(params)}` : '';
+      return await apiFetch(`${API_ENDPOINTS.PRODUCTS_CUSTOMER}${qs}`);
+    },
+
+    // Smart search with relevance scoring — lower-cases terms, matches keywords
+    search: async (params) => {
+      const qs = params ? `?${new URLSearchParams(params)}` : '';
+      return await apiFetch(`${API_ENDPOINTS.PRODUCTS_CUSTOMER_SEARCH}${qs}`);
+    },
+
+    // Personalised recommendations for logged-in user
+    getRecommended: async (params) => {
+      const qs = params ? `?${new URLSearchParams(params)}` : '';
+      return await apiFetch(`${API_ENDPOINTS.PRODUCTS_RECOMMENDED}${qs}`);
+    },
+
+    // Fire-and-forget interaction tracking (VIEW, SEARCH, WISHLIST, CART, PURCHASE)
+    trackInteraction: async (productId, type, searchTerm) => {
+      try {
+        return await apiFetch(API_ENDPOINTS.PRODUCTS_TRACK_INTERACTION, {
+          method: 'POST',
+          body: JSON.stringify({ productId, type, searchTerm }),
+        });
+      } catch (_) {
+        // silently swallow — this is non-critical
+      }
+    },
+
+    // Notify-me when back in stock
+    notifyMe: async (productId, email) => {
+      return await apiFetch(API_ENDPOINTS.PRODUCT_NOTIFY(productId), {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+    },
+  },
+
+  // =====================
+  // PRODUCT IMAGE MANAGEMENT
+  // =====================
+  productImages: {
+    // Upload images: mode='append'|'replace', position required for replace
+    manage: async (productId, formData) => {
+      const token = authUtils.getToken();
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PRODUCT_IMAGES(productId)}`, {
+        method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData, // FormData with images (files), mode, position
+      });
+      const freshToken = response.headers.get('x-new-token');
+      if (freshToken) authUtils.setToken(freshToken);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Image upload failed');
+      return data;
+    },
+
+    delete: async (productId, imageId) => {
+      return await apiFetch(API_ENDPOINTS.PRODUCT_IMAGE_DELETE(productId, imageId), {
+        method: 'DELETE',
+      });
     },
   },
 
