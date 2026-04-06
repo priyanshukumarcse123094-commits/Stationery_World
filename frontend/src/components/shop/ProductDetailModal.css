@@ -302,6 +302,7 @@
 ═══════════════════════════════════════ */
 .modal-right {
   display: flex;
+  width: auto;
   flex-direction: column;
   padding: 26px 28px 28px;
   gap: 0;
