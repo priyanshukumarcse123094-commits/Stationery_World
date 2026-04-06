@@ -4,6 +4,9 @@ import BargainModal from './BargainModal';
 import './ProductCard.css';
 import { API_BASE_URL } from '../../config/constants';
 
+// ── Variant type → pill label map ────────────────────────────────────────────
+const VARIANT_LABEL = { COLOR: 'color', SIZE: 'size', TYPE: 'type', STYLE: 'style' };
+
 export default function ProductCard({
   product,
   variant = 'standard',
@@ -20,28 +23,51 @@ export default function ProductCard({
   const [notified, setNotified]                           = useState(false);
   const [cartFlash, setCartFlash]                         = useState(false);
 
+  // Variant switcher — tracks which sibling product is "active" in this card
+  const [activeVariantId, setActiveVariantId]             = useState(product.id);
+  const [activeProduct, setActiveProduct]                 = useState(product);
+
   // Bargain state
   const [showBargainModal, setShowBargainModal]           = useState(false);
   const [eligibility, setEligibility]                     = useState(null);
   const [checkingEligibility, setCheckingEligibility]     = useState(false);
 
-  /* ── Image URL ── */
-  const getImageUrl = () => {
-    const primary = product.images?.find((img) => img.isPrimary)?.url
-                 || product.images?.[0]?.url;
+  // Reset active variant when the parent product changes
+  useEffect(() => {
+    setActiveVariantId(product.id);
+    setActiveProduct(product);
+  }, [product.id]);
+
+  /* ── Variant siblings ── */
+  const variantGroup = product.variantGroup;
+  const siblings     = variantGroup?.products ?? [];
+  const hasVariants  = siblings.length > 1;
+  const variantType  = variantGroup?.variantType ?? null;
+
+  const handleVariantSwitch = (sibling) => {
+    if (sibling.id === activeVariantId) return;
+    setActiveVariantId(sibling.id);
+    setActiveProduct(sibling);
+    setImageError(false);
+  };
+
+  /* ── Image URL — resolves from the currently active variant ── */
+  const getImageUrl = (p = activeProduct) => {
+    const primary = p.images?.find((img) => img.isPrimary)?.url
+                 || p.images?.[0]?.url;
     if (!primary) return '/placeholder.png';
     if (primary.startsWith('http://') || primary.startsWith('https://')) return primary;
     return `${API_BASE_URL}${primary}`;
   };
 
   const imageUrl     = getImageUrl();
-  const isOutOfStock = product.totalStock === 0;
-  const isLowStock   = product.totalStock > 0 && product.totalStock <= (product.lowStockThreshold || 10);
+  const isOutOfStock = activeProduct.totalStock === 0;
+  const isLowStock   = activeProduct.totalStock > 0 && activeProduct.totalStock <= (activeProduct.lowStockThreshold || 10);
 
   /* ── Bargain eligibility ── */
   useEffect(() => {
-    if (product?.bargainable && !isOutOfStock) checkBargainEligibility();
-  }, [product?.id, product?.bargainable]);
+    if (activeProduct?.bargainable && !isOutOfStock) checkBargainEligibility();
+  }, [activeProduct?.id, activeProduct?.bargainable]);
 
   const checkBargainEligibility = async () => {
     setCheckingEligibility(true);
@@ -49,7 +75,7 @@ export default function ProductCard({
       const token   = localStorage.getItem('token');
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res    = await fetch(`${API_BASE_URL}/api/bargain/eligibility/${product.id}`, { headers });
+      const res    = await fetch(`${API_BASE_URL}/api/bargain/eligibility/${activeProduct.id}`, { headers });
       const result = await res.json();
       if (result.success) setEligibility(result.data);
     } catch (err) {
@@ -68,7 +94,7 @@ export default function ProductCard({
   const handleAddToCart = (e) => {
     e.stopPropagation();
     if (!onAddToCart) return;
-    onAddToCart(product);
+    onAddToCart(activeProduct);
     setCartFlash(true);
     setTimeout(() => setCartFlash(false), 1000);
   };
@@ -81,7 +107,7 @@ export default function ProductCard({
       const token = localStorage.getItem('token');
       if (!token) { alert('Please login to get notified'); return; }
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const res  = await fetch(`${API_BASE_URL}/api/products/${product.id}/notify`, {
+      const res  = await fetch(`${API_BASE_URL}/api/products/${activeProduct.id}/notify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,36 +135,36 @@ export default function ProductCard({
       <div className={`product-card ${variant} ${isOutOfStock ? 'out-of-stock' : ''}`}>
 
         {/* ── Image ── */}
-        <div className="pc-image" onClick={() => onViewProduct?.(product)}>
+        <div className="pc-image" onClick={() => onViewProduct?.(activeProduct)}>
 
           {/* Stock badge */}
           {isOutOfStock
             ? <div className="stock-badge out">Out of Stock</div>
-            : isLowStock && <div className="stock-badge low">Only {product.totalStock} left</div>
+            : isLowStock && <div className="stock-badge low">Only {activeProduct.totalStock} left</div>
           }
 
           <img
             src={imageError ? '/placeholder.png' : imageUrl}
-            alt={product.name}
+            alt={activeProduct.name}
             onError={() => setImageError(true)}
             loading="lazy"
           />
 
-          {/* Wishlist corner badge — always visible when wishlisted, hover otherwise */}
+          {/* Wishlist corner badge */}
           <button
             className={`pc-wishlist-corner ${isWishlisted ? 'active' : ''}`}
-            onClick={(e) => { e.stopPropagation(); onToggleWishlist?.(product); }}
+            onClick={(e) => { e.stopPropagation(); onToggleWishlist?.(activeProduct); }}
             aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
             title={isWishlisted ? 'Wishlisted' : 'Add to wishlist'}
           >
             <Heart size={15} fill={isWishlisted ? 'currentColor' : 'none'} />
           </button>
 
-          {/* Hover overlay — view + cart actions */}
+          {/* Hover overlay */}
           <div className="pc-overlay">
             <button
               className="pc-icon view"
-              onClick={(e) => { e.stopPropagation(); onViewProduct?.(product); }}
+              onClick={(e) => { e.stopPropagation(); onViewProduct?.(activeProduct); }}
               aria-label="Quick view"
               title="Quick view"
             >
@@ -160,26 +186,59 @@ export default function ProductCard({
 
         {/* ── Body ── */}
         <div className="pc-body">
-          <div className="pc-category">{product.category}</div>
+          <div className="pc-category">{activeProduct.category}</div>
 
           <div
             className="pc-title"
-            title={product.name}
-            onClick={() => onViewProduct?.(product)}
+            title={activeProduct.name}
+            onClick={() => onViewProduct?.(activeProduct)}
             style={{ cursor: 'pointer' }}
           >
-            {product.name}
+            {activeProduct.name}
           </div>
 
           <p className="pc-description">
-            {product.description?.substring(0, 72)}
-            {product.description?.length > 72 ? '…' : ''}
+            {activeProduct.description?.substring(0, 72)}
+            {activeProduct.description?.length > 72 ? '…' : ''}
           </p>
 
+          {/* ── Variant switcher ── */}
+          {hasVariants && (
+            <div className="pc-variants" title={`Switch ${VARIANT_LABEL[variantType] || 'variant'}`}>
+              <span className="pc-variant-label">{VARIANT_LABEL[variantType] || 'variant'}:</span>
+              <div className="pc-variant-pills">
+                {siblings.map((sib) => {
+                  const sibImg = sib.images?.find(i => i.isPrimary)?.url || sib.images?.[0]?.url;
+                  const isActive = sib.id === activeVariantId;
+                  return (
+                    <button
+                      key={sib.id}
+                      className={`pc-variant-pill ${isActive ? 'active' : ''} ${sib.totalStock === 0 ? 'oos' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); handleVariantSwitch(sib); }}
+                      title={sib.name}
+                    >
+                      {sibImg ? (
+                        <img
+                          src={sibImg.startsWith('http') ? sibImg : `${API_BASE_URL}${sibImg}`}
+                          alt={sib.name}
+                          className="pc-variant-thumb"
+                          onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }}
+                        />
+                      ) : null}
+                      <span className="pc-variant-pill-name" style={sibImg ? { display:'none' } : {}}>
+                        {sib.name.length > 10 ? sib.name.slice(0, 10) + '…' : sib.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Seller */}
-          {product.createdBy && (
+          {activeProduct.createdBy && (
             <div className="seller-badge">
-              👤 {product.createdBy.name}
+              👤 {activeProduct.createdBy.name}
             </div>
           )}
 
@@ -192,12 +251,12 @@ export default function ProductCard({
           <div className="pc-meta">
             <div className="pc-price">
               <span className="currency">₹</span>
-              <span className="amount">{parseFloat(product.baseSellingPrice).toFixed(2)}</span>
+              <span className="amount">{parseFloat(activeProduct.baseSellingPrice).toFixed(2)}</span>
             </div>
           </div>
 
           {/* ✨ Bargain Button */}
-          {!isOutOfStock && product.bargainable && eligibility?.canBargain && (
+          {!isOutOfStock && activeProduct.bargainable && eligibility?.canBargain && (
             <button
               className="bargain-btn"
               onClick={(e) => { e.stopPropagation(); setShowBargainModal(true); }}
@@ -230,7 +289,7 @@ export default function ProductCard({
             !eligibility?.canBargain && onBuyNow && (
               <button
                 className="buy-now-btn"
-                onClick={(e) => { e.stopPropagation(); onBuyNow(product); }}
+                onClick={(e) => { e.stopPropagation(); onBuyNow(activeProduct); }}
               >
                 <Zap size={13} />
                 Buy Now
@@ -245,11 +304,24 @@ export default function ProductCard({
         <BargainModal
           isOpen={showBargainModal}
           onClose={() => setShowBargainModal(false)}
-          product={product}
+          product={activeProduct}
           eligibility={eligibility}
           onSuccess={handleBargainSuccess}
         />
       )}
+
+      {/* Inline variant pill styles — scoped, no external CSS changes needed */}
+      <style>{`
+        .pc-variants{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0 4px;}
+        .pc-variant-label{font-size:10px;color:#888;text-transform:capitalize;white-space:nowrap;}
+        .pc-variant-pills{display:flex;gap:4px;flex-wrap:wrap;}
+        .pc-variant-pill{width:28px;height:28px;border-radius:6px;border:2px solid #e5e7eb;background:#f9fafb;cursor:pointer;padding:0;overflow:hidden;position:relative;transition:border-color .15s,box-shadow .15s;display:flex;align-items:center;justify-content:center;}
+        .pc-variant-pill:hover{border-color:#6366f1;}
+        .pc-variant-pill.active{border-color:#6366f1;box-shadow:0 0 0 2px rgba(99,102,241,.25);}
+        .pc-variant-pill.oos{opacity:.4;}
+        .pc-variant-thumb{width:100%;height:100%;object-fit:cover;display:block;}
+        .pc-variant-pill-name{font-size:8px;color:#374151;text-align:center;padding:0 2px;line-height:1.2;}
+      `}</style>
     </>
   );
 }
