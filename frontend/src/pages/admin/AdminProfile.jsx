@@ -57,7 +57,7 @@ export default function AdminProfile() {
           qrCodeUrl: data.data.qrCodeUrl || '',
         });
       }
-    } catch (_) { /* first time — no settings yet */ }
+    } catch { /* first time — no settings yet */ }
   };
 
   const handleUpiQrChange = async (e) => {
@@ -73,7 +73,7 @@ export default function AdminProfile() {
       const reader = new FileReader();
       reader.onloadend = () => setUpiQrPreview(reader.result);
       reader.readAsDataURL(compressed);
-    } catch (err) {
+    } catch {
       setUpiMessage({ type: 'error', text: 'Failed to process QR image.' });
     }
   };

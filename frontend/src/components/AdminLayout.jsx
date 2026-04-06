@@ -31,9 +31,12 @@ const AdminLayout = () => {
 
   useEffect(() => {
     // Trigger a small fade/slide animation when the route changes.
-    setAnimatePage(true);
+    const activateTimer = window.setTimeout(() => setAnimatePage(true), 0);
     const timer = window.setTimeout(() => setAnimatePage(false), 500);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(activateTimer);
+      window.clearTimeout(timer);
+    };
   }, [location.pathname]);
 
   return (

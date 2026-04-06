@@ -190,7 +190,7 @@ export default function Dashboard() {
         let rd = [];
         if (Array.isArray(payload)) {
           // old shape (monthly-only array)
-          rd = payload.map((item, i) => ({ date: item.day || item.date }));
+          rd = payload.map((item) => ({ date: item.day || item.date }));
         } else {
           rd = payload.revenueByDay || [];
         }

@@ -51,7 +51,6 @@ export default function AdminSignup() {
   const [photoFile,    setPhotoFile]    = useState(null);
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState('');
-  const [pwFocused,    setPwFocused]    = useState(false);
 
   const [form, setForm] = useState({
     name: '', email: '', password: '', confirmPassword: '',
@@ -233,8 +232,6 @@ export default function AdminSignup() {
                     placeholder="Create a strong password"
                     value={form.password}
                     onChange={change}
-                    onFocus={() => setPwFocused(true)}
-                    onBlur={() => setPwFocused(false)}
                   />
                   <button type="button" className="auth-eye-btn" onClick={() => setShowPassword(v => !v)} tabIndex={-1}>
                     {showPassword ? "🙈" : "👁"}

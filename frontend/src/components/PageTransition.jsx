@@ -32,9 +32,12 @@ export default function PageTransition() {
 
   useEffect(() => {
     // Trigger transition on every route change
-    setActive(true);
+    const activateTimer = window.setTimeout(() => setActive(true), 0);
     const timer = window.setTimeout(() => setActive(false), TRANSITION_TIMEOUT);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(activateTimer);
+      window.clearTimeout(timer);
+    };
   }, [location.pathname]);
 
   if (!active) return null;

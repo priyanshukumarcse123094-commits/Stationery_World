@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 
 /* ─── Inline styles (no external CSS needed beyond customer-auth.css vars) ─── */
 const S = {

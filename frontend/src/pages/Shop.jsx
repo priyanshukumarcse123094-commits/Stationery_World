@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useSearch } from '../context/SearchContext';
@@ -83,7 +83,9 @@ export default function Shop() {
       const res = await fetch(`${API}/api/wishlist`, { headers: { Authorization: `Bearer ${token}` } });
       const result = await res.json();
       if (result.success) setWishlistIds(new Set((result.data || []).map(w => w.productId)));
-    } catch {}
+    } catch (err) {
+      console.error('Failed to fetch wishlist IDs:', err);
+    }
   }, []);
 
   useEffect(() => { fetchWishlistIds(); }, [fetchWishlistIds]);
@@ -165,7 +167,9 @@ export default function Shop() {
             setError(null);
             return;
           }
-        } catch {}
+        } catch (err) {
+          console.error('Recommended products fetch failed:', err);
+        }
         // Fallback: random from customer endpoint (works without history)
         try {
           const fbRes = await fetch(
@@ -179,7 +183,9 @@ export default function Shop() {
             setError(null);
             return;
           }
-        } catch {}
+        } catch (err) {
+          console.error('Fallback recommended fetch failed:', err);
+        }
       }
 
       // B. Search mode — always from API, never local/cached
@@ -201,7 +207,9 @@ export default function Shop() {
             setError(null);
             return;
           }
-        } catch {}
+        } catch (err) {
+          console.error('Customer search endpoint failed:', err);
+        }
 
         // Fallback to generic search if customer/search not available
         const fallbackParams = new URLSearchParams({ search: trimmed, limit: '20', _t: ts });
@@ -239,7 +247,9 @@ export default function Shop() {
           setError(null);
           return;
         }
-      } catch {}
+      } catch (err) {
+        console.error('Customer catalog endpoint failed:', err);
+      }
 
       // Final fallback to generic products endpoint
       const fbParams = new URLSearchParams({ isActive: 'true', limit: '20', _t: ts });
@@ -354,7 +364,9 @@ export default function Shop() {
         city: user?.city || '', state: user?.state || '',
         postalCode: user?.postalCode || '', country: user?.country || '', note: ''
       });
-    } catch {}
+    } catch (err) {
+      console.error('Failed to prefill buy-now form from user:', err);
+    }
     setBuyNowProduct(product);
     setBuyNowQty(1);
     setShowDetailModal(false);

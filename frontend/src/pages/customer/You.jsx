@@ -23,6 +23,7 @@ const getImageUrl = (photoUrl) => {
 };
 
 export default function You() {
+  const isAuthenticated = authUtils.isAuthenticated();
   const [tab, setTab] = useState('profile');
   const [user, setUser] = useState(null);
   const [editingField, setEditingField] = useState(null);
@@ -34,7 +35,7 @@ export default function You() {
   const [message, setMessage] = useState({ type: '', text: '' });
 
   // redirect when not logged in
-  if (!authUtils.isAuthenticated()) {
+  if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 

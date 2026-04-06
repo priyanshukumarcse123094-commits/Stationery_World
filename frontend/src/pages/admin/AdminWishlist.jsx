@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart, TrendingUp, Users, Package, Loader, RefreshCw, IndianRupee } from 'lucide-react';
 import { useSearch } from '../../context/SearchContext';
 import { authUtils } from '../../utils/auth';
