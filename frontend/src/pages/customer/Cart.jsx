@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ShoppingCart, Trash2, Plus, Minus, Loader, Package, ArrowRight, ShoppingBag, X } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, Loader, Package, ArrowRight, ShoppingBag, X, QrCode, Copy, CheckCircle } from 'lucide-react';
 import './Cart.css';
 import { API_BASE_URL } from '../../config/constants';
 
@@ -19,6 +19,9 @@ export default function Cart() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(null);
+  // UPI payment data shown after order is placed
+  const [upiSettingsList, setUpiSettingsList] = useState([]);
+  const [copiedUpi, setCopiedUpi] = useState('');
   const [checkoutForm, setCheckoutForm] = useState({
     recipientName: '', recipientPhone: '', addressLine1: '', addressLine2: '',
     city: '', state: '', postalCode: '', country: '', note: ''
@@ -123,10 +126,28 @@ export default function Cart() {
       });
       const confirmResult = await confirmRes.json();
       if (!confirmResult.success) throw new Error(confirmResult.message);
+
+      // Fetch UPI settings for all admins whose products are in this order
+      let upiList = [];
+      try {
+        const upiRes = await fetch(`${API}/api/payments/order/${orderResult.data.id}/upi-settings`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const upiData = await upiRes.json();
+        if (upiData.success && Array.isArray(upiData.data)) upiList = upiData.data;
+      } catch (_) { /* non-fatal */ }
+
+      setUpiSettingsList(upiList);
       setCheckoutSuccess({ orderId: orderResult.data.id, uid: orderResult.data.uid, total: cart.subtotal });
       await fetchCart();
     } catch (err) { alert('Order failed: ' + err.message); }
     finally { setCheckoutLoading(false); }
+  };
+
+  const handleCopyUpi = (upiId) => {
+    navigator.clipboard.writeText(upiId).catch(() => {});
+    setCopiedUpi(upiId);
+    setTimeout(() => setCopiedUpi(''), 2000);
   };
 
   const fmt = (n) => `₹${parseFloat(n || 0).toFixed(2)}`;
@@ -276,13 +297,67 @@ export default function Cart() {
           <div style={{ background: 'var(--bg-surface)', borderRadius: 16, padding: 28, width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto' }}
             onClick={e => e.stopPropagation()}>
             {checkoutSuccess ? (
-              <div style={{ textAlign: 'center', padding: 24 }}>
-                <div style={{ fontSize: 56, marginBottom: 12 }}>✅</div>
-                <h3 style={{ color: '#16a34a', fontSize: 20 }}>Order Placed!</h3>
-                <p style={{ color: '#6b7280' }}>Order #{checkoutSuccess.uid}</p>
-                <p style={{ color: '#1f2937', fontWeight: 700, fontSize: 18, margin: '12px 0 24px' }}>{fmt(checkoutSuccess.total)}</p>
-                <button onClick={() => { setShowCheckout(false); setCheckoutSuccess(null); }}
-                  style={{ padding: '11px 28px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>Done</button>
+              <div style={{ padding: '8px 0' }}>
+                {/* Order confirmed banner */}
+                <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                  <div style={{ fontSize: 52, marginBottom: 10 }}>✅</div>
+                  <h3 style={{ color: '#16a34a', fontSize: 19, margin: '0 0 4px' }}>Order Placed!</h3>
+                  <p style={{ color: '#6b7280', margin: 0, fontSize: 13 }}>Order #{checkoutSuccess.uid}</p>
+                  <p style={{ color: '#1f2937', fontWeight: 800, fontSize: 20, margin: '10px 0 0' }}>{fmt(checkoutSuccess.total)}</p>
+                </div>
+
+                {/* UPI Payment Section */}
+                {upiSettingsList.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ background: '#eff6ff', borderRadius: 10, padding: '12px 16px', marginBottom: 14, fontSize: 13, color: '#1e40af', fontWeight: 600 }}>
+                      <QrCode size={15} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                      Pay via UPI to complete your order
+                    </div>
+                    {upiSettingsList.map((s, i) => (
+                      <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, marginBottom: 12, background: '#fafafa' }}>
+                        {s.displayName && (
+                          <div style={{ fontWeight: 700, fontSize: 14, color: '#1f2937', marginBottom: 10 }}>
+                            🏪 {s.displayName}
+                          </div>
+                        )}
+                        {/* QR Code */}
+                        {s.qrCodeUrl && (
+                          <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                            <img
+                              src={s.qrCodeUrl}
+                              alt="UPI QR Code"
+                              style={{ width: 180, height: 180, objectFit: 'contain', border: '1px solid #e5e7eb', borderRadius: 10, background: '#fff', padding: 6 }}
+                              onError={e => e.target.style.display = 'none'}
+                            />
+                            <p style={{ fontSize: 11, color: '#9ca3af', margin: '6px 0 0' }}>Scan with any UPI app</p>
+                          </div>
+                        )}
+                        {/* UPI ID + copy button */}
+                        {s.upiId && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f3f4f6', borderRadius: 8, padding: '8px 12px' }}>
+                            <span style={{ flex: 1, fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#374151' }}>{s.upiId}</span>
+                            <button
+                              onClick={() => handleCopyUpi(s.upiId)}
+                              style={{ padding: '5px 10px', border: '1px solid #d1d5db', borderRadius: 6, background: copiedUpi === s.upiId ? '#d1fae5' : '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: copiedUpi === s.upiId ? '#065f46' : '#374151', display: 'flex', alignItems: 'center', gap: 4, transition: 'all .15s' }}
+                            >
+                              {copiedUpi === s.upiId ? <><CheckCircle size={13} /> Copied!</> : <><Copy size={13} /> Copy</>}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', margin: '4px 0 0' }}>
+                      After payment, share the transaction ID with the shop for faster processing.
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => { setShowCheckout(false); setCheckoutSuccess(null); setUpiSettingsList([]); }}
+                  style={{ width: '100%', padding: '11px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}
+                >
+                  Done
+                </button>
               </div>
             ) : (
               <>
