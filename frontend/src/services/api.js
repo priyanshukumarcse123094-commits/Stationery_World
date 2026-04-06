@@ -398,7 +398,7 @@ export const apiService = {
           method: 'POST',
           body: JSON.stringify({ productId, type, searchTerm }),
         });
-      } catch (_) {
+      } catch {
         // silently swallow — this is non-critical
       }
     },

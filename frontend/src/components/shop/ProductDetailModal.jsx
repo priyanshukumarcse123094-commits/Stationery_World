@@ -265,18 +265,24 @@ export default function ProductDetailModal({
               )}
 
               {/* ✨ Bargain Button */}
-              {!isOutOfStock && activeProduct.bargainable && eligibility?.canBargain && (
-                <button
-                  className="btn-modal-bargain"
-                  onClick={() => setShowBargainModal(true)}
-                >
-                  💰 Make an Offer
-                  {eligibility.metadata.remainingAttempts > 0 && (
-                    <span className="attempts-badge">
-                      {eligibility.metadata.remainingAttempts} attempts left
-                    </span>
-                  )}
-                </button>
+              {!isOutOfStock && activeProduct.bargainable && (
+                checkingEligibility ? (
+                  <button className="btn-modal-bargain" disabled>
+                    Checking offer eligibility...
+                  </button>
+                ) : eligibility?.canBargain ? (
+                  <button
+                    className="btn-modal-bargain"
+                    onClick={() => setShowBargainModal(true)}
+                  >
+                    💰 Make an Offer
+                    {eligibility.metadata.remainingAttempts > 0 && (
+                      <span className="attempts-badge">
+                        {eligibility.metadata.remainingAttempts} attempts left
+                      </span>
+                    )}
+                  </button>
+                ) : null
               )}
 
               {/* Buy Now */}
@@ -366,212 +372,6 @@ export default function ProductDetailModal({
           isOpen={showBargainModal}
           onClose={() => setShowBargainModal(false)}
           product={activeProduct}
-          eligibility={eligibility}
-          onSuccess={handleBargainSuccess}
-        />
-      )}
-    </>
-  );
-}
-        <div className="product-detail-modal" onClick={(e) => e.stopPropagation()}>
-
-          {/* Close */}
-          <button className="modal-close" onClick={onClose} aria-label="Close">
-            <X size={18} strokeWidth={2.5} />
-          </button>
-
-          <div className="modal-content">
-
-            {/* ══ LEFT — Images ══ */}
-            <div className="modal-left">
-              <div className="main-image">
-                <img
-                  src={currentImgUrl}
-                  alt={product.name}
-                  onError={(e) => (e.target.src = '/placeholder.png')}
-                />
-                {isOutOfStock && (
-                  <div className="modal-stock-badge">Out of Stock</div>
-                )}
-              </div>
-
-              {images.length > 1 && (
-                <div className="image-thumbnails">
-                  {images.map((img, idx) => (
-                    <div
-                      key={idx}
-                      className={`thumbnail ${idx === selectedImage ? 'active' : ''}`}
-                      onClick={() => setSelectedImage(idx)}
-                    >
-                      <img
-                        src={getImageUrl(img.url)}
-                        alt={`${product.name} view ${idx + 1}`}
-                        onError={(e) => (e.target.src = '/placeholder.png')}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* ══ RIGHT — Details ══ */}
-            <div className="modal-right">
-
-              {/* Category */}
-              <div className="modal-category">
-                <Tag size={11} style={{ marginRight: 5 }} />
-                {product.category}
-              </div>
-
-              {/* Title */}
-              <h2 className="modal-title">{product.name}</h2>
-
-              {/* Price + Stock */}
-              <div className="modal-price-section">
-                <div className="modal-price">
-                  ₹{parseFloat(product.baseSellingPrice).toFixed(2)}
-                </div>
-                <div className={`modal-stock ${isOutOfStock ? 'out' : 'in'}`}>
-                  <Package size={15} />
-                  {isOutOfStock ? 'Out of Stock' : `${product.totalStock} in stock`}
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="modal-description">
-                <h4>Description</h4>
-                <p>{product.description || 'No description available.'}</p>
-              </div>
-
-              <div className="modal-divider" />
-
-              {/* Quantity */}
-              {!isOutOfStock && (
-                <div className="quantity-selector">
-                  <label>Quantity</label>
-                  <div className="quantity-controls">
-                    <button
-                      onClick={() => handleQuantityChange(-1)}
-                      disabled={quantity <= 1}
-                      aria-label="Decrease quantity"
-                    >
-                      <Minus size={15} />
-                    </button>
-                    <span className="quantity-value">{quantity}</span>
-                    <button
-                      onClick={() => handleQuantityChange(1)}
-                      disabled={quantity >= maxQuantity}
-                      aria-label="Increase quantity"
-                    >
-                      <Plus size={15} />
-                    </button>
-                  </div>
-                  <span className="max-qty">Maximum per order: {maxQuantity}</span>
-                </div>
-              )}
-
-              {/* ✨ Bargain Button */}
-              {!isOutOfStock && product.bargainable && eligibility?.canBargain && (
-                <button
-                  className="btn-modal-bargain"
-                  onClick={() => setShowBargainModal(true)}
-                >
-                  💰 Make an Offer
-                  {eligibility.metadata.remainingAttempts > 0 && (
-                    <span className="attempts-badge">
-                      {eligibility.metadata.remainingAttempts} attempts left
-                    </span>
-                  )}
-                </button>
-              )}
-
-              {/* Buy Now */}
-              {!isOutOfStock && onBuyNow && (
-                <button
-                  className="btn-modal-buynow"
-                  onClick={() => onBuyNow(product)}
-                >
-                  <Zap size={17} />
-                  Buy Now
-                </button>
-              )}
-
-              {/* Add to Cart + Wishlist — or Notify */}
-              <div className="modal-actions">
-                {isOutOfStock ? (
-                  <button
-                    className={`btn-modal-notify ${notified ? 'notified' : 'default'}`}
-                    onClick={handleNotifyMe}
-                    disabled={notifying || notified}
-                  >
-                    {notified ? (
-                      <><CheckCircle2 size={17} /> You'll be notified</>
-                    ) : notifying ? (
-                      <>Registering…</>
-                    ) : (
-                      <><Bell size={17} /> Notify Me When Available</>
-                    )}
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      className={`btn-modal-cart${addedFlash ? " success" : ""}`}
-                      onClick={handleAddToCart}
-                      disabled={addedFlash}
-                    >
-                      {addedFlash ? (
-                        <><CheckCircle2 size={18} /> Added!</>
-                      ) : (
-                        <><ShoppingCart size={18} /> Add to Cart</>
-                      )}
-                    </button>
-                    <button
-                      className={`btn-modal-wishlist ${isWishlisted ? 'wishlisted' : ''}`}
-                      onClick={() => { onToggleWishlist?.(product); onClose(); }}
-                    >
-                      <Heart size={18} fill={isWishlisted ? 'currentColor' : 'none'} />
-                      {isWishlisted ? 'Saved' : 'Wishlist'}
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Meta Info */}
-              <div className="product-meta-info">
-                <div className="meta-item"><strong>SKU:</strong> {product.id}</div>
-                <div className="meta-item"><strong>Category:</strong> {product.category}</div>
-                {product.subCategory && (
-                  <div className="meta-item"><strong>Sub-category:</strong> {product.subCategory}</div>
-                )}
-                <div className="meta-item">
-                  <strong>Status:</strong> {isOutOfStock ? 'Out of Stock' : 'In Stock'}
-                </div>
-
-                {/* Seller */}
-                {product.createdBy && (
-                  <div className="seller-info-block">
-                    <div className="seller-avatar">👤</div>
-                    <div className="seller-info-text">
-                      <span className="seller-name">{product.createdBy.name}</span>
-                      <span className={`seller-role-badge ${product.createdBy.role === 'ADMIN' ? 'admin' : 'seller'}`}>
-                        {product.createdBy.role}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bargain Modal */}
-      {showBargainModal && eligibility && (
-        <BargainModal
-          isOpen={showBargainModal}
-          onClose={() => setShowBargainModal(false)}
-          product={product}
           eligibility={eligibility}
           onSuccess={handleBargainSuccess}
         />

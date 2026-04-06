@@ -23,6 +23,7 @@ const getImageUrl = (photoUrl) => {
 };
 
 export default function You() {
+  const isAuthenticated = authUtils.isAuthenticated();
   const [tab, setTab] = useState('profile');
   const [user, setUser] = useState(null);
   const [editingField, setEditingField] = useState(null);
@@ -33,17 +34,17 @@ export default function You() {
   const [newPhoto, setNewPhoto] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  // redirect when not logged in
-  if (!authUtils.isAuthenticated()) {
-    return <Navigate to="/" replace />;
-  }
-
   // Load user data
   useEffect(() => {
     const userData = authUtils.getUser();
     setUser(userData);
     setEditValues(userData || {});
   }, []);
+
+  // redirect when not logged in
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   // Handle field edit start
   const startEdit = (field) => {

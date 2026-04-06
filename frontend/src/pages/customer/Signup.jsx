@@ -48,7 +48,6 @@ export default function Signup() {
 
   const [photoFile,    setPhotoFile]    = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
-  const [photoLoading, setPhotoLoading] = useState(false);
   const [showPw,       setShowPw]       = useState(false);
   const [showCf,       setShowCf]       = useState(false);
   const [loading,      setLoading]      = useState(false);
@@ -62,7 +61,6 @@ export default function Signup() {
     if (!isSupportedImageType(file)) { setError('Invalid file type. Only JPG, PNG, and WEBP are allowed.'); return; }
     if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5MB'); return; }
     setError('');
-    setPhotoLoading(true);
     try {
       const compressed = await compressImageFile(file, { maxSizeKB: 100, maxWidthOrHeight: 1280 });
       setPhotoFile(compressed);
@@ -74,8 +72,6 @@ export default function Signup() {
       setError(err.message || 'Image compression failed');
       setPhotoFile(null);
       setPhotoPreview(null);
-    } finally {
-      setPhotoLoading(false);
     }
   }
 
@@ -109,7 +105,7 @@ export default function Signup() {
         if (data?.errors?.length) setError('Password must have: ' + data.errors.join(', '));
         else setError(data?.message || 'Signup failed');
       }
-    } catch (err) {
+    } catch {
       setError('Request failed. Please try again.');
     } finally {
       setLoading(false);

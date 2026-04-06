@@ -164,7 +164,9 @@ export default function Wishlist() {
         city: user?.city || '', state: user?.state || '',
         postalCode: user?.postalCode || '', country: user?.country || '', note: ''
       });
-    } catch {}
+    } catch (err) {
+      console.error('Failed to prefill buy-now form:', err);
+    }
     setBuyNowProduct(product);
     setBuyNowQty(1);
     setSelectedProduct(null);

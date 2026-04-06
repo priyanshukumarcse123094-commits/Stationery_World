@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 
 const SearchContext = createContext();
@@ -21,9 +22,6 @@ export function SearchProvider({ children }) {
 
   // Debounce ref — cancel previous in-flight search on rapid typing
   const debounceRef = useRef(null);
-  // Abort controller for fetch cancellation
-  const abortRef = useRef(null);
-
   // Register a search handler for the current page
   const registerSearchHandler = useCallback((mode, handler, customPlaceholder, renderer) => {
     setSearchMode(mode);

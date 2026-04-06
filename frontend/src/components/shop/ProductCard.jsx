@@ -16,7 +16,7 @@ export default function ProductCard({
   onBuyNow,
   isWishlisted = false,
 }) {
-  if (!product) return null;
+  const safeProduct = product || {};
 
   const [imageError, setImageError]                       = useState(false);
   const [notifying, setNotifying]                         = useState(false);
@@ -24,8 +24,8 @@ export default function ProductCard({
   const [cartFlash, setCartFlash]                         = useState(false);
 
   // Variant switcher — tracks which sibling product is "active" in this card
-  const [activeVariantId, setActiveVariantId]             = useState(product.id);
-  const [activeProduct, setActiveProduct]                 = useState(product);
+  const [activeVariantId, setActiveVariantId]             = useState(safeProduct.id);
+  const [activeProduct, setActiveProduct]                 = useState(safeProduct);
 
   // Bargain state
   const [showBargainModal, setShowBargainModal]           = useState(false);
@@ -34,12 +34,13 @@ export default function ProductCard({
 
   // Reset active variant when the parent product changes
   useEffect(() => {
+    if (!product) return;
     setActiveVariantId(product.id);
     setActiveProduct(product);
-  }, [product.id]);
+  }, [product]);
 
   /* ── Variant siblings ── */
-  const variantGroup = product.variantGroup;
+  const variantGroup = safeProduct.variantGroup;
   const siblings     = variantGroup?.products ?? [];
   const hasVariants  = siblings.length > 1;
   const variantType  = variantGroup?.variantType ?? null;
@@ -66,7 +67,7 @@ export default function ProductCard({
 
   /* ── Bargain eligibility ── */
   useEffect(() => {
-    if (activeProduct?.bargainable && !isOutOfStock) checkBargainEligibility();
+      if (activeProduct?.bargainable && !isOutOfStock) checkBargainEligibility();
   }, [activeProduct?.id, activeProduct?.bargainable]);
 
   const checkBargainEligibility = async () => {
@@ -132,6 +133,7 @@ export default function ProductCard({
 
   return (
     <>
+      {!product ? null : (
       <div className={`product-card ${variant} ${isOutOfStock ? 'out-of-stock' : ''}`}>
 
         {/* ── Image ── */}
@@ -256,18 +258,22 @@ export default function ProductCard({
           </div>
 
           {/* ✨ Bargain Button */}
-          {!isOutOfStock && activeProduct.bargainable && eligibility?.canBargain && (
-            <button
-              className="bargain-btn"
-              onClick={(e) => { e.stopPropagation(); setShowBargainModal(true); }}
-            >
-              💰 Make an Offer
-              {eligibility.metadata.remainingAttempts > 0 && (
-                <span className="remaining">
-                  {eligibility.metadata.remainingAttempts} left
-                </span>
-              )}
-            </button>
+          {!isOutOfStock && activeProduct.bargainable && (
+            checkingEligibility ? (
+              <button className="bargain-btn" disabled>Checking offer...</button>
+            ) : eligibility?.canBargain ? (
+              <button
+                className="bargain-btn"
+                onClick={(e) => { e.stopPropagation(); setShowBargainModal(true); }}
+              >
+                💰 Make an Offer
+                {eligibility.metadata.remainingAttempts > 0 && (
+                  <span className="remaining">
+                    {eligibility.metadata.remainingAttempts} left
+                  </span>
+                )}
+              </button>
+            ) : null
           )}
 
           {/* Notify / Buy Now */}
@@ -298,6 +304,7 @@ export default function ProductCard({
           )}
         </div>
       </div>
+      )}
 
       {/* Bargain Modal */}
       {showBargainModal && eligibility && (

@@ -102,7 +102,9 @@ export default function AdminShopping() {
       if (result.success) {
         setWishlistIds(new Set((result.data || []).map(w => w.productId)));
       }
-    } catch {}
+    } catch (err) {
+      console.error('Failed to fetch admin wishlist ids:', err);
+    }
   }, []);
 
   // Add to Cart

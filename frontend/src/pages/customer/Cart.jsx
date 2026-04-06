@@ -53,7 +53,9 @@ export default function Cart() {
         city: user.city || '', state: user.state || '',
         postalCode: user.postalCode || '', country: user.country || '',
       }));
-    } catch {}
+    } catch (err) {
+      console.error('Failed to prefill checkout form:', err);
+    }
   }, [fetchCart]);
 
   const fetchBargainRequests = async () => {
@@ -135,7 +137,7 @@ export default function Cart() {
         });
         const upiData = await upiRes.json();
         if (upiData.success && Array.isArray(upiData.data)) upiList = upiData.data;
-      } catch (_) { /* non-fatal */ }
+      } catch { /* non-fatal */ }
 
       setUpiSettingsList(upiList);
       setCheckoutSuccess({ orderId: orderResult.data.id, uid: orderResult.data.uid, total: cart.subtotal });

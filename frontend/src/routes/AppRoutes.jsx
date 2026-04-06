@@ -14,6 +14,7 @@ import Users from "../pages/admin/Users";
 import BargainRequests from "../pages/admin/BargainRequests";
 import AdminShopping from "../pages/admin/AdminShopping";
 import AdminWishlist from "../pages/admin/AdminWishlist";
+import { SidebarProvider } from "../context/SidebarContext";
 
 // Admin
 //import AdminLogin from "../pages/admin/AdminLogin";
@@ -29,8 +30,6 @@ export default function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       
       {/* Admin Routes */}
-      import { SidebarProvider } from "../context/SidebarContext";
-
       <Route path="/admin" element={
         <SidebarProvider>
           <AdminLayout />

@@ -212,18 +212,24 @@ export default function ProductDetailModal({
               )}
 
               {/* Bargain */}
-              {!isOutOfStock && product.bargainable && eligibility?.canBargain && (
-                <button
-                  className="btn-modal-bargain"
-                  onClick={() => setShowBargainModal(true)}
-                >
-                  💰 Make an Offer
-                  {eligibility.metadata.remainingAttempts > 0 && (
-                    <span className="attempts-badge">
-                      {eligibility.metadata.remainingAttempts} attempts left
-                    </span>
-                  )}
-                </button>
+              {!isOutOfStock && product.bargainable && (
+                checkingEligibility ? (
+                  <button className="btn-modal-bargain" disabled>
+                    Checking offer eligibility...
+                  </button>
+                ) : eligibility?.canBargain ? (
+                  <button
+                    className="btn-modal-bargain"
+                    onClick={() => setShowBargainModal(true)}
+                  >
+                    💰 Make an Offer
+                    {eligibility.metadata.remainingAttempts > 0 && (
+                      <span className="attempts-badge">
+                        {eligibility.metadata.remainingAttempts} attempts left
+                      </span>
+                    )}
+                  </button>
+                ) : null
               )}
 
               {/* Buy Now */}

@@ -58,7 +58,9 @@ function LowStockTab({ lowList, setLowList, onRestock }) {
           notifyMeCount:     item.notifyMeCount ?? 0,
         })));
       }
-    } catch {} finally { setLoadingRefresh(false); }
+    } catch (err) {
+      console.error('Low-stock refresh failed:', err);
+    } finally { setLoadingRefresh(false); }
   };
 
   if (lowList.length === 0) return (
@@ -745,7 +747,7 @@ export default function Inventory() {
         });
       }
       setVariantMessage({ type: 'success', text: groupId ? '✅ Product linked to variant group.' : '✅ Product removed from variant group.' });
-    } catch (err) {
+    } catch {
       setVariantMessage({ type: 'error', text: 'Failed to update variant group assignment.' });
     }
   };

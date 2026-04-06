@@ -14,7 +14,7 @@ export default function BargainRequests() {
   const [actionLoading, setActionLoading] = useState({});
   const [grantForm, setGrantForm] = useState({ userId: '', productId: '', expiresAt: '' });
 
-  const { registerSearchHandler, unregisterSearchHandler, searchQuery } = useSearch();
+  const { registerSearchHandler, unregisterSearchHandler } = useSearch();
 
   useEffect(() => {
     loadRequests();

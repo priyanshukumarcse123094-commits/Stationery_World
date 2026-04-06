@@ -12,9 +12,12 @@ export default function CustomerLayout() {
   const [animatePage, setAnimatePage] = useState(true);
 
   useEffect(() => {
-    setAnimatePage(true);
+    const activateTimer = window.setTimeout(() => setAnimatePage(true), 0);
     const timer = window.setTimeout(() => setAnimatePage(false), 520);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(activateTimer);
+      window.clearTimeout(timer);
+    };
   }, [location.pathname]);
 
   return (
