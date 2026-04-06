@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authUtils } from '../../utils/auth';
-import { Edit2, Camera, Save, X } from 'lucide-react';
+import { Edit2, Camera, Save, X, QrCode, CreditCard, CheckCircle } from 'lucide-react';
 import { API_BASE_URL } from '../../config/constants';
 import { compressImageFile, isSupportedImageType } from '../../utils/imageCompression';
 
@@ -29,12 +29,90 @@ export default function AdminProfile() {
   const [newPhoto, setNewPhoto] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '' });
 
+  // ── UPI / QR Payment Settings ─────────────────────────────────────────────
+  const [upiSettings, setUpiSettings]     = useState({ upiId: '', displayName: '', qrCodeUrl: '' });
+  const [upiLoading, setUpiLoading]       = useState(false);
+  const [upiMessage, setUpiMessage]       = useState({ type: '', text: '' });
+  const [upiQrFile, setUpiQrFile]         = useState(null);
+  const [upiQrPreview, setUpiQrPreview]   = useState(null);
+  const [editingUpi, setEditingUpi]       = useState(false);
+
   // Load user data
   useEffect(() => {
     const userData = authUtils.getUser();
     setUser(userData);
     setEditValues(userData || {});
+    // Fetch UPI settings for this admin
+    if (userData?.id) fetchUpiSettings(userData.id);
   }, []);
+
+  const fetchUpiSettings = async (adminId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/payments/upi-settings/${adminId}`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setUpiSettings({
+          upiId: data.data.upiId || '',
+          displayName: data.data.displayName || '',
+          qrCodeUrl: data.data.qrCodeUrl || '',
+        });
+      }
+    } catch (_) { /* first time — no settings yet */ }
+  };
+
+  const handleUpiQrChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!isSupportedImageType(file)) {
+      setUpiMessage({ type: 'error', text: 'Only JPG, PNG, or WEBP allowed.' });
+      return;
+    }
+    try {
+      const compressed = await compressImageFile(file, { maxSizeKB: 300, maxWidthOrHeight: 800 });
+      setUpiQrFile(compressed);
+      const reader = new FileReader();
+      reader.onloadend = () => setUpiQrPreview(reader.result);
+      reader.readAsDataURL(compressed);
+    } catch (err) {
+      setUpiMessage({ type: 'error', text: 'Failed to process QR image.' });
+    }
+  };
+
+  const saveUpiSettings = async () => {
+    setUpiLoading(true);
+    setUpiMessage({ type: '', text: '' });
+    try {
+      const formData = new FormData();
+      if (upiSettings.upiId)      formData.append('upiId',       upiSettings.upiId.trim());
+      if (upiSettings.displayName) formData.append('displayName', upiSettings.displayName.trim());
+      if (upiQrFile)               formData.append('qrCode',      upiQrFile);
+
+      const response = await fetch(`${API_BASE_URL}/api/payments/admin/upi-settings`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${authUtils.getToken()}` },
+        body: formData,
+      });
+      const freshToken = response.headers.get('x-new-token');
+      if (freshToken) authUtils.setToken(freshToken);
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to save UPI settings');
+
+      setUpiSettings({
+        upiId: data.data.upiId || '',
+        displayName: data.data.displayName || '',
+        qrCodeUrl: data.data.qrCodeUrl || '',
+      });
+      setUpiQrFile(null);
+      setUpiQrPreview(null);
+      setEditingUpi(false);
+      setUpiMessage({ type: 'success', text: '✅ UPI payment settings saved successfully!' });
+    } catch (err) {
+      setUpiMessage({ type: 'error', text: err.message || 'Failed to save UPI settings.' });
+    } finally {
+      setUpiLoading(false);
+    }
+  };
 
   // Handle field edit start
   const startEdit = (field) => {
@@ -451,6 +529,122 @@ export default function AdminProfile() {
       {/* Password Change */}
       <h5 style={{ marginTop: 24, marginBottom: 12, fontSize: 16, fontWeight: 600, color: '#dc3545' }}>Security</h5>
       {renderField('Password', 'password', '••••••••', 'password')}
+
+      {/* ── UPI / QR Payment Settings ── */}
+      <h5 style={{ marginTop: 24, marginBottom: 4, fontSize: 16, fontWeight: 600, color: '#dc3545' }}>
+        <CreditCard size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+        UPI Payment Settings
+      </h5>
+      <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>
+        Customers will see your UPI ID and QR code when checking out orders that contain your products.
+      </p>
+
+      {upiMessage.text && (
+        <div style={{
+          marginBottom: 14, padding: '10px 14px', borderRadius: 8, fontSize: 13,
+          background: upiMessage.type === 'success' ? '#d1fae5' : '#fee2e2',
+          color:      upiMessage.type === 'success' ? '#065f46'  : '#991b1b',
+          border: `1px solid ${upiMessage.type === 'success' ? '#6ee7b7' : '#fca5a5'}`
+        }}>
+          {upiMessage.text}
+        </div>
+      )}
+
+      <div style={{ padding: 20, border: '2px solid #fca5a5', borderRadius: 10, background: '#fff5f5', marginBottom: 24 }}>
+        {/* Current QR preview */}
+        {(upiQrPreview || upiSettings.qrCodeUrl) && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>
+                {upiQrPreview ? 'New QR Preview' : 'Current QR Code'}
+              </p>
+              <img
+                src={upiQrPreview || upiSettings.qrCodeUrl}
+                alt="UPI QR Code"
+                style={{ width: 140, height: 140, border: '1px solid #e5e7eb', borderRadius: 8, objectFit: 'contain', background: '#fff' }}
+                onError={e => e.target.style.display = 'none'}
+              />
+            </div>
+          </div>
+        )}
+
+        {editingUpi ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                Display Name (shown to customers)
+              </label>
+              <input
+                type="text"
+                value={upiSettings.displayName}
+                onChange={e => setUpiSettings(s => ({ ...s, displayName: e.target.value }))}
+                placeholder="e.g. Stationery World"
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                UPI ID
+              </label>
+              <input
+                type="text"
+                value={upiSettings.upiId}
+                onChange={e => setUpiSettings(s => ({ ...s, upiId: e.target.value }))}
+                placeholder="e.g. yourname@upi"
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                <QrCode size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                Upload QR Code Image
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleUpiQrChange}
+                style={{ fontSize: 13 }}
+              />
+              <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+                Max 300KB · JPG, PNG or WEBP · {upiSettings.qrCodeUrl ? 'Uploading a new image will replace the existing QR.' : 'Upload your UPI QR code.'}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+              <button
+                onClick={saveUpiSettings}
+                disabled={upiLoading}
+                style={{ flex: 1, padding: '9px 0', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 700, fontSize: 13, cursor: upiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <Save size={15} /> {upiLoading ? 'Saving…' : 'Save UPI Settings'}
+              </button>
+              <button
+                onClick={() => { setEditingUpi(false); setUpiQrFile(null); setUpiQrPreview(null); setUpiMessage({ type: '', text: '' }); }}
+                disabled={upiLoading}
+                style={{ padding: '9px 18px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+              >
+                <X size={15} /> Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ marginBottom: 10 }}>
+              <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>Display Name: </span>
+              <span style={{ fontSize: 13, color: '#1f2937' }}>{upiSettings.displayName || <em style={{ color: '#9ca3af' }}>Not set</em>}</span>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>UPI ID: </span>
+              <span style={{ fontSize: 13, color: '#1f2937', fontFamily: 'monospace' }}>{upiSettings.upiId || <em style={{ color: '#9ca3af' }}>Not set</em>}</span>
+            </div>
+            <button
+              onClick={() => setEditingUpi(true)}
+              style={{ padding: '9px 20px', background: '#dc3545', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <Edit2 size={15} /> {upiSettings.upiId ? 'Update UPI Settings' : 'Setup UPI Payment'}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Account Info */}
       <h5 style={{ marginTop: 24, marginBottom: 12, fontSize: 16, fontWeight: 600, color: '#dc3545' }}>Admin Account Details</h5>
