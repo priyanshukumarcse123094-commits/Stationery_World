@@ -408,6 +408,18 @@ export default function Inventory() {
   const [inventoryList,  setInventoryList]  = useState([]);
   const [lowList,        setLowList]        = useState([]);
 
+  // ── Variant group state ────────────────────────────────────────────────────
+  const [variantGroups,       setVariantGroups]       = useState([]);
+  const [selectedVariantGroup, setSelectedVariantGroup] = useState('');   // groupId or ''
+  const [newGroupName,        setNewGroupName]         = useState('');
+  const [newGroupType,        setNewGroupType]         = useState('COLOR');
+  const [creatingGroup,       setCreatingGroup]        = useState(false);
+  const [variantMessage,      setVariantMessage]       = useState({ type: '', text: '' });
+
+  // ── Image manage (per-image replace/append for existing products) ──────────
+  const [imgManageMode,  setImgManageMode]  = useState('append');  // 'append' | 'replace'
+  const [imgReplacePos,  setImgReplacePos]  = useState(0);
+
   /* ── file handling ── */
   async function handleFileChange(e) {
     const files = Array.from(e.target.files || []).slice(0, 6);
@@ -520,6 +532,9 @@ export default function Inventory() {
       investmentSource: 'PROFIT'
     });
     setExistingImages(full.images || []);
+    setSelectedVariantGroup(full.variantGroupId ? String(full.variantGroupId) : '');
+    setImgManageMode('append');
+    setImgReplacePos(0);
     setSelectedFiles([]); setFilePreviews([]);
   }
 
@@ -552,6 +567,7 @@ export default function Inventory() {
         totalStock: parseInt(form.quantityAdded) || 0,
         lowStockThreshold: parseInt(form.lowStockThreshold) || 10,
         images: imageUrls,
+        variantGroupId: selectedVariantGroup ? parseInt(selectedVariantGroup) : null,
         bargainConfig: form.bargainable ? {
           maxAttempts: form.bargainMaxAttempts,
           tier1Price: parseFloat(form.bargainTiers[0]?.price) || 0,
@@ -594,6 +610,7 @@ export default function Inventory() {
         keywords: form.keywords.split(',').map(s => s.trim()).filter(Boolean),
         lowStockThreshold: parseInt(form.lowStockThreshold) || 10,
         images: imageUrls,
+        variantGroupId: selectedVariantGroup ? parseInt(selectedVariantGroup) : null,
         bargainConfig: form.bargainable ? {
           maxAttempts: form.bargainMaxAttempts,
           tier1Price: parseFloat(form.bargainTiers[0]?.price) || 0,
@@ -678,8 +695,89 @@ export default function Inventory() {
     } catch (err) { console.error('refreshAllData error:', err); }
   };
 
+  /* ── fetch variant groups ── */
+  const fetchVariantGroups = async () => {
+    try {
+      const token = authUtils.getToken();
+      const res  = await fetch(`${API}/api/products/variant-groups`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data?.success) setVariantGroups(data.data || []);
+    } catch (err) { console.error('fetchVariantGroups error:', err); }
+  };
+
+  /* ── create new variant group ── */
+  const handleCreateVariantGroup = async () => {
+    if (!newGroupName.trim()) return setVariantMessage({ type: 'error', text: 'Group name is required.' });
+    setCreatingGroup(true);
+    setVariantMessage({ type: '', text: '' });
+    try {
+      const token = authUtils.getToken();
+      const res  = await fetch(`${API}/api/products/variant-groups`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: newGroupName.trim(), variantType: newGroupType })
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setVariantGroups(g => [data.data, ...g]);
+        setSelectedVariantGroup(String(data.data.id));
+        setNewGroupName('');
+        setVariantMessage({ type: 'success', text: `✅ Group "${data.data.name}" created.` });
+      } else {
+        setVariantMessage({ type: 'error', text: data.message || 'Failed to create group.' });
+      }
+    } catch (err) {
+      setVariantMessage({ type: 'error', text: err.message });
+    } finally { setCreatingGroup(false); }
+  };
+
+  /* ── assign/remove product to variant group ── */
+  const handleAssignVariantGroup = async (productId, groupId) => {
+    const token = authUtils.getToken();
+    try {
+      if (groupId) {
+        await fetch(`${API}/api/products/variant-groups/${groupId}/products/${productId}`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}` }
+        });
+      } else {
+        await fetch(`${API}/api/products/variant-groups/products/${productId}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+      setVariantMessage({ type: 'success', text: groupId ? '✅ Product linked to variant group.' : '✅ Product removed from variant group.' });
+    } catch (err) {
+      setVariantMessage({ type: 'error', text: 'Failed to update variant group assignment.' });
+    }
+  };
+
+  /* ── replace a single image at a position (PUT /api/products/:id/images) ── */
+  const handleManageImages = async (productId) => {
+    if (!selectedFiles.length) return alert('No image selected.');
+    setLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('mode', imgManageMode);
+      if (imgManageMode === 'replace') fd.append('position', imgReplacePos);
+      selectedFiles.forEach(f => fd.append('images', f));
+      const token = authUtils.getToken();
+      const res  = await fetch(`${API}/api/products/${productId}/images`, {
+        method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: fd
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setExistingImages(data.data?.images || []);
+        setSelectedFiles([]); setFilePreviews([]);
+        alert(`✅ ${imgManageMode === 'replace' ? 'Image replaced' : 'Images appended'} successfully.`);
+      } else {
+        alert('❌ ' + (data?.message || 'Image update failed'));
+      }
+    } catch (err) { alert('❌ ' + err.message); }
+    finally { setLoading(false); }
+  };
+
   /* ── fetch on tab change ── */
   useEffect(() => {
+    fetchVariantGroups(); // always keep variant groups fresh
     if (tab === 'view') {
       (async () => {
         try {
@@ -919,6 +1017,48 @@ export default function Inventory() {
                     }}>+ Add rule</button>
 
                     <label>Product Images (max 6)</label>
+
+                    {/* ── Image mode selector (edit mode only) ── */}
+                    {mode === 'edit' && existingImages.length > 0 && (
+                      <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: '10px 14px', marginBottom: 10 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#0369a1', marginBottom: 8 }}>Image Upload Mode</div>
+                        <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 13, textTransform: 'none', letterSpacing: 0, fontWeight: imgManageMode === 'append' ? 700 : 400 }}>
+                            <input type="radio" name="imgMode" value="append" checked={imgManageMode === 'append'} onChange={() => setImgManageMode('append')} style={{ width: 'auto' }} />
+                            Append — add after existing
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 13, textTransform: 'none', letterSpacing: 0, fontWeight: imgManageMode === 'replace' ? 700 : 400 }}>
+                            <input type="radio" name="imgMode" value="replace" checked={imgManageMode === 'replace'} onChange={() => setImgManageMode('replace')} style={{ width: 'auto' }} />
+                            Replace — delete old, repost at position
+                          </label>
+                        </div>
+                        {imgManageMode === 'replace' && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 12, color: '#374151' }}>Replace position (0-based):</span>
+                            <select value={imgReplacePos} onChange={e => setImgReplacePos(parseInt(e.target.value))}
+                              style={{ padding: '3px 8px', borderRadius: 5, border: '1px solid #d1d5db', fontSize: 13 }}>
+                              {existingImages.map((_, i) => <option key={i} value={i}>Position {i} {i === 0 ? '(primary)' : ''}</option>)}
+                            </select>
+                            <button type="button" className="btn outline" style={{ padding: '3px 10px', fontSize: 12 }}
+                              onClick={() => handleManageImages(selected?.id)} disabled={loading || !selectedFiles.length}>
+                              {loading ? '⏳' : '🔄 Apply'}
+                            </button>
+                          </div>
+                        )}
+                        {/* Existing images thumbnails */}
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                          {existingImages.map((img, idx) => (
+                            <div key={idx} style={{ position: 'relative', width: 52, height: 52 }}>
+                              <img src={getImageUrl(img.url)} alt={`img-${idx}`}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, border: idx === 0 ? '2px solid #6366f1' : '1px solid #e5e7eb' }}
+                                onError={e => e.target.style.opacity = '0.3'} />
+                              <span style={{ position: 'absolute', bottom: 1, left: 2, fontSize: 9, background: 'rgba(0,0,0,0.55)', color: '#fff', borderRadius: 3, padding: '0 3px' }}>{idx}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple onChange={handleFileChange} style={{ border: 'none', padding: '6px 0', background: 'transparent' }} />
                     {isCompressing && (
                       <p style={{ marginTop: 8, color: '#0c5460' }}>Compressing images, please wait…</p>
@@ -936,6 +1076,69 @@ export default function Inventory() {
                         ))}
                       </div>
                     )}
+
+                    {/* ── Variant Group Assignment ── */}
+                    <div style={{ marginTop: 20, padding: '12px 16px', border: '1px dashed #a5b4fc', borderRadius: 10, background: '#f5f3ff' }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: '#4338ca', marginBottom: 10 }}>
+                        🔗 Product Variant Group
+                        <span style={{ fontWeight: 400, fontSize: 11, color: '#7c3aed', marginLeft: 6 }}>
+                          (Link similar products — color, size, type, style)
+                        </span>
+                      </div>
+
+                      {variantMessage.text && (
+                        <div style={{ marginBottom: 8, padding: '6px 10px', borderRadius: 6, fontSize: 12, background: variantMessage.type === 'success' ? '#d1fae5' : '#fee2e2', color: variantMessage.type === 'success' ? '#065f46' : '#991b1b' }}>
+                          {variantMessage.text}
+                        </div>
+                      )}
+
+                      <label style={{ textTransform: 'none', letterSpacing: 0, fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                        Assign to existing group
+                      </label>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+                        <select
+                          value={selectedVariantGroup}
+                          onChange={e => setSelectedVariantGroup(e.target.value)}
+                          style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid #c4b5fd', fontSize: 13 }}
+                        >
+                          <option value="">— No group —</option>
+                          {variantGroups.map(g => (
+                            <option key={g.id} value={String(g.id)}>
+                              {g.name} ({g.variantType}) · {g.products?.length ?? 0} products
+                            </option>
+                          ))}
+                        </select>
+                        {mode === 'edit' && selected && (
+                          <button type="button" className="btn outline" style={{ fontSize: 12, padding: '5px 12px' }}
+                            onClick={() => handleAssignVariantGroup(selected.id, selectedVariantGroup || null)}>
+                            Save Link
+                          </button>
+                        )}
+                      </div>
+
+                      <label style={{ textTransform: 'none', letterSpacing: 0, fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                        Or create a new group
+                      </label>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <input
+                          placeholder="Group name, e.g. Linc Pentonic"
+                          value={newGroupName}
+                          onChange={e => setNewGroupName(e.target.value)}
+                          style={{ flex: 2, minWidth: 140, padding: '6px 10px', border: '1px solid #c4b5fd', borderRadius: 6, fontSize: 13 }}
+                        />
+                        <select value={newGroupType} onChange={e => setNewGroupType(e.target.value)}
+                          style={{ flex: 1, minWidth: 90, padding: '6px 8px', border: '1px solid #c4b5fd', borderRadius: 6, fontSize: 13 }}>
+                          <option value="COLOR">COLOR</option>
+                          <option value="SIZE">SIZE</option>
+                          <option value="TYPE">TYPE</option>
+                          <option value="STYLE">STYLE</option>
+                        </select>
+                        <button type="button" className="btn outline" style={{ fontSize: 12, padding: '5px 12px' }}
+                          disabled={creatingGroup || !newGroupName.trim()} onClick={handleCreateVariantGroup}>
+                          {creatingGroup ? '⏳' : '+ Create'}
+                        </button>
+                      </div>
+                    </div>
 
                     <div className="row">
                       <div className="col">
