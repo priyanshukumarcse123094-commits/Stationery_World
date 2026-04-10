@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useSearch } from '../../context/SearchContext';
 import { authUtils } from '../../utils/auth';
 
@@ -40,6 +40,17 @@ export default function AdminShopping() {
 
   const { registerSearchHandler, unregisterSearchHandler, searchQuery, clearSearch } = useSearch();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  // §2.4: If navigated with ?view=categories, scroll to category strip
+  useEffect(() => {
+    if (searchParams.get('view') === 'categories') {
+      setTimeout(() => {
+        const el = document.getElementById('categories');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
+    }
+  }, [searchParams]);
 
   // Helper: show toast
   const showToast = (type, msg) => {
