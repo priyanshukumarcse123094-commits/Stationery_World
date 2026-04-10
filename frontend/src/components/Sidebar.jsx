@@ -55,6 +55,10 @@ const Sidebar = () => {
           <span className="icon">🛒</span>
           <span className="text">Shopping</span>
         </NavLink>
+        <NavLink to="/admin/shopping?view=categories" className={({ isActive }) => isActive ? "active" : ""}>
+          <span className="icon">🗂️</span>
+          <span className="text">Shop By Category</span>
+        </NavLink>
         <NavLink to="/admin/wishlist" className={({ isActive }) => isActive ? "active" : ""}>
           <span className="icon">💖</span>
           <span className="text">Wishlist</span>
