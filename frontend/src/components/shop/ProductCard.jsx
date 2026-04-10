@@ -249,12 +249,20 @@ export default function ProductCard({
             <div className="offer-badge">🔑 Special Offer</div>
           )}
 
-          {/* Price */}
+          {/* Price + MRP — §2.5: show MRP strikethrough unless MRP == SP */}
           <div className="pc-meta">
             <div className="pc-price">
               <span className="currency">₹</span>
               <span className="amount">{parseFloat(activeProduct.baseSellingPrice).toFixed(2)}</span>
+              {activeProduct.mrp && parseFloat(activeProduct.mrp) > parseFloat(activeProduct.baseSellingPrice) && (
+                <span className="pc-mrp">₹{parseFloat(activeProduct.mrp).toFixed(2)}</span>
+              )}
             </div>
+            {activeProduct.mrp && parseFloat(activeProduct.mrp) > parseFloat(activeProduct.baseSellingPrice) && (
+              <span className="pc-discount-badge">
+                {Math.round(((activeProduct.mrp - activeProduct.baseSellingPrice) / activeProduct.mrp) * 100)}% off
+              </span>
+            )}
           </div>
 
           {/* ✨ Bargain Button */}
