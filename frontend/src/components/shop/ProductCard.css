@@ -13,6 +13,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  /* §2.5: Fixed identical dimensions for all cards */
+  width: 100%;
+  height: 420px;
   transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
               box-shadow 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
               border-color 0.22s ease;
@@ -44,9 +47,9 @@
   position: relative;
   overflow: hidden;
   background: var(--bg-subtle, #F0EDE8);
-  aspect-ratio: 4 / 3;
-  cursor: pointer;
+  height: 180px;        /* fixed height so all cards align */
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 [data-theme="dark"] .pc-image {
@@ -232,6 +235,28 @@
   background: var(--purple-bg, rgba(167,139,250,0.12));
 }
 
+/* ── MRP Strikethrough + Discount Badge — §2.5 ── */
+.pc-mrp {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted, #9A9088);
+  text-decoration: line-through;
+  margin-left: 6px;
+  align-self: center;
+}
+[data-theme="dark"] .pc-mrp { color: var(--text-muted, #7A706A); }
+
+.pc-discount-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--green, #2A7A4B);
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+[data-theme="dark"] .pc-discount-badge { background: var(--green, #34D399); color: #0f1f17; }
+
 /* ── Price ── */
 .pc-meta {
   display: flex;
@@ -350,4 +375,23 @@
 [data-theme="dark"] .buy-now-btn {
   background: var(--text-primary, #F0EDE8);
   color: var(--text-inverse, #1A1612);
+}
+
+/* ── Responsive card dimensions — §2.5 ── */
+@media (max-width: 1280px) {
+  .product-card { height: 400px; }
+  .pc-image { height: 165px; }
+}
+
+@media (max-width: 768px) {
+  .product-card { height: 360px; }
+  .pc-image { height: 148px; }
+  .pc-body { padding: 10px 10px 8px; gap: 3px; }
+  .pc-title { font-size: 13px; }
+  .pc-description { display: none; } /* hide description on mobile to preserve space */
+}
+
+@media (max-width: 480px) {
+  .product-card { height: 320px; }
+  .pc-image { height: 130px; }
 }
