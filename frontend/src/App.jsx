@@ -86,58 +86,7 @@ export default function App() {
         <Route path="shopping" element={<AdminShopping />} />
         <Route path="wishlist" element={<AdminWishlist />} />
       </Route>
-    </Routes>    </ThemeProvider>  );
-}
-
-export default function App() {
-  return (
-    <ThemeProvider>
-      <PageTransition />
-      <Routes>
-      {/* ================= CUSTOMER AUTH (PUBLIC) ================= */}
-      <Route path="/" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/verify-otp" element={<VerifyOtp />} />
-
-      {/* ================= CUSTOMER PAGES (PROTECTED - CUSTOMER ONLY) ================= */}
-      <Route path="/customer" element={
-        <ProtectedRoute customerOnly>
-          <SidebarProvider>
-            <CustomerLayout />
-          </SidebarProvider>
-        </ProtectedRoute>
-      }>
-        <Route index element={<Shop />} />
-        <Route path="you" element={<You />} />
-        <Route path="orders" element={<CustomerOrders />} /> {/* New Orders page for customers */}
-        <Route path="bargain" element={<Bargain />} />
-        <Route path="wishlist" element={<Wishlist />} />
-        <Route path="cart" element={<Cart />} />
-      </Route>
-
-      {/* ================= ADMIN AUTH (PUBLIC) ================= */}
-      <Route path="/admin" element={<AdminLogin />} />
-      <Route path="/admin/signup" element={<AdminSignup />} />
-      <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
-
-      {/* ================= ADMIN DASHBOARD (PROTECTED - ADMIN ONLY) ================= */}
-      <Route path="/admin" element={
-        <ProtectedRoute adminOnly>
-          <SidebarProvider>
-            <AdminLayout />
-          </SidebarProvider>
-        </ProtectedRoute>
-      }>
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="profile" element={<AdminProfile />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="inventory" element={<Inventory />} />
-        <Route path="orders" element={<Orders />} />
-        <Route path="users" element={<Users />} />
-        <Route path="bargain-requests" element={<BargainRequests />} />
-        <Route path="shopping" element={<AdminShopping />} />
-        <Route path="wishlist" element={<AdminWishlist />} />
-      </Route>
-    </Routes>    </ThemeProvider>  );
+      </Routes>
+    </ThemeProvider>
+  );
 }
