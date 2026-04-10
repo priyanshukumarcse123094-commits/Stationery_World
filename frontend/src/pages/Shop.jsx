@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useSearch } from '../context/SearchContext';
 import Hero from '../components/shop/Hero';
@@ -53,6 +53,19 @@ export default function Shop() {
   const [wishlistIds, setWishlistIds] = useState(new Set());
   const { registerSearchHandler, unregisterSearchHandler, searchQuery: topbarQuery, clearSearch } = useSearch();
   const location            = useLocation();
+  const [searchParams]      = useSearchParams();
+
+  // §2.4: Read ?category=X from CustomerSidebar "Shop By Category" links
+  useEffect(() => {
+    const cat = searchParams.get('category');
+    if (cat && ['STATIONERY', 'BOOKS', 'TOYS'].includes(cat)) {
+      setSelectedCategory(cat);
+      setTimeout(() => {
+        const el = document.getElementById('categories');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
+    }
+  }, [searchParams]);
   const [buyNowProduct, setBuyNowProduct]     = useState(null);
   const [buyNowQty, setBuyNowQty]             = useState(1);
   const [buyNowLoading, setBuyNowLoading]     = useState(false);
@@ -442,7 +455,14 @@ export default function Shop() {
 
       <Hero
         featured={featuredProduct}
+        searchActive={!!activeSearch || !!topbarQuery}
         onShopNow={() => window.scrollTo({ top: 400, behavior: 'smooth' })}
+        onExploreCategories={() => {
+          setSelectedCategory('All');
+          const el = document.getElementById('categories');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+          else window.scrollTo({ top: 400, behavior: 'smooth' });
+        }}
       />
 
       <div className="card">
@@ -467,7 +487,7 @@ export default function Shop() {
           </div>
         )}
 
-        <div className="shop-toolbar">
+        <div className="shop-toolbar" id="categories">
           <CategoryStrip
             categories={categories}
             selected={selectedCategory}
