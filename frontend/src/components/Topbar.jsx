@@ -146,12 +146,18 @@ const Topbar = ({
                 <span className={`toggle-icon toggle-icon--close${isOpen ? '' : ' hidden'}`}><CloseIcon /></span>
               </span>
             </button>
-            <span className="topbar-brand">
+            <button
+              className="topbar-brand"
+              onClick={() => navigate(isAdmin ? '/admin/dashboard' : '/customer')}
+              aria-label="Go to home"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 8 }}
+            >
               <Logo size={26} />
               <span className="topbar-brand-text">
                 Stationery World
               </span>
-            </span>
+              {isAdmin && <span className="topbar-badge-admin topbar-badge-admin--brand">ADMIN</span>}
+            </button>
           </>
         )}
       </div>
