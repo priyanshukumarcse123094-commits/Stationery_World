@@ -1,31 +1,47 @@
-import React, { useState } from 'react';
-import { ShoppingBag, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ShoppingBag, Sparkles, Grid3X3 } from 'lucide-react';
 import { API_BASE_URL } from '../../config/constants';
 
-export default function Hero({ featured, onShopNow }) {
+/**
+ * Hero — §9.1
+ * - Hides smoothly when `searchActive` is true, reappears when cleared.
+ * - "Explore Categories" CTA calls `onExploreCategories` (new prop).
+ * - All transitions use CSS so there is zero layout flash.
+ */
+export default function Hero({ featured, onShopNow, onExploreCategories, searchActive = false }) {
   const [imageError, setImageError] = useState(false);
-  
+  const heroRef = useRef(null);
+
   const getImageUrl = () => {
-    const primaryImage = featured?.images?.find(img => img.isPrimary)?.url || 
-                         featured?.images?.[0]?.url;
-    
+    const primaryImage =
+      featured?.images?.find(img => img.isPrimary)?.url ||
+      featured?.images?.[0]?.url;
+
     if (!primaryImage) return '/placeholder.png';
-    
-    if (primaryImage.startsWith('http://') || primaryImage.startsWith('https://')) {
-      return primaryImage;
-    }
-    
-    if (primaryImage.startsWith('/uploads')) {
-      return `${API_BASE_URL}${primaryImage}`;
-    }
-    
+    if (primaryImage.startsWith('http://') || primaryImage.startsWith('https://')) return primaryImage;
     return `${API_BASE_URL}${primaryImage}`;
   };
 
   const imageUrl = getImageUrl();
 
+  // Smooth height collapse when search is active (§9.1)
+  const heroStyle = {
+    maxHeight: searchActive ? '0' : '600px',
+    opacity: searchActive ? '0' : '1',
+    overflow: 'hidden',
+    marginBottom: searchActive ? '0' : undefined,
+    paddingTop: searchActive ? '0' : undefined,
+    paddingBottom: searchActive ? '0' : undefined,
+    transition:
+      'max-height 0.40s cubic-bezier(0.4, 0, 0.2, 1), ' +
+      'opacity 0.30s ease, ' +
+      'margin-bottom 0.40s ease, ' +
+      'padding 0.40s ease',
+    pointerEvents: searchActive ? 'none' : undefined,
+  };
+
   return (
-    <section className="shop-hero">
+    <section className="shop-hero" style={heroStyle} ref={heroRef} aria-hidden={searchActive}>
       <div className="hero-left">
         <div className="hero-badge">
           <Sparkles size={16} />
@@ -40,7 +56,19 @@ export default function Hero({ featured, onShopNow }) {
             <ShoppingBag size={20} />
             Shop Now
           </button>
-          <button className="btn outline" onClick={() => window.location.href = '#categories'}>
+          {/* §9.1 / §2.4: Explore Categories wired to onExploreCategories */}
+          <button
+            className="btn outline"
+            onClick={() => {
+              if (onExploreCategories) {
+                onExploreCategories();
+              } else {
+                const el = document.getElementById('categories');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
+          >
+            <Grid3X3 size={18} />
             Explore Categories
           </button>
         </div>
@@ -63,8 +91,8 @@ export default function Hero({ featured, onShopNow }) {
         {featured && (
           <div className="hero-card">
             <div className="hero-card-badge">Featured</div>
-            <img 
-              src={imageError ? '/placeholder.png' : imageUrl} 
+            <img
+              src={imageError ? '/placeholder.png' : imageUrl}
               alt={featured.name}
               onError={() => setImageError(true)}
             />
