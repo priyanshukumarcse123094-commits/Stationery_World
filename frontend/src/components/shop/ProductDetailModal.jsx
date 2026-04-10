@@ -30,6 +30,8 @@ export default function ProductDetailModal({
   const [showBargainModal, setShowBargainModal]       = useState(false);
   const [eligibility, setEligibility]                 = useState(null);
   const [checkingEligibility, setCheckingEligibility] = useState(false);
+  const [bargainRequested, setBargainRequested]       = useState(false);
+  const [requestingBargain, setRequestingBargain]     = useState(false);
 
   /* ── helpers ── */
   const getImageUrl = (url) => {
@@ -80,6 +82,30 @@ export default function ProductDetailModal({
     alert(`Offer accepted at ₹${data.finalPrice}! Item added to cart.`);
     checkBargainEligibility();
     onClose();
+  };
+
+  /* ── §8 / §21: Request Bargain (when product is bargainable but customer hasn't been approved yet) ── */
+  const handleRequestBargain = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) { alert('Please login to request a bargain'); return; }
+    setRequestingBargain(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/bargain/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ productId: activeProduct.id }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setBargainRequested(true);
+      } else {
+        alert(result.message || 'Could not submit bargain request');
+      }
+    } catch (e) {
+      alert('Failed to send request. Please try again.');
+    } finally {
+      setRequestingBargain(false);
+    }
   };
 
   /* ── Cart ── */
@@ -220,10 +246,20 @@ export default function ProductDetailModal({
                 </div>
               )}
 
-              {/* Price + Stock */}
+              {/* Price + Stock — §2.5: MRP strikethrough */}
               <div className="modal-price-section">
-                <div className="modal-price">
-                  ₹{parseFloat(activeProduct.baseSellingPrice).toFixed(2)}
+                <div className="modal-price-group">
+                  <div className="modal-price">
+                    ₹{parseFloat(activeProduct.baseSellingPrice).toFixed(2)}
+                  </div>
+                  {activeProduct.mrp && parseFloat(activeProduct.mrp) > parseFloat(activeProduct.baseSellingPrice) && (
+                    <div className="modal-mrp-row">
+                      <span className="modal-mrp">MRP ₹{parseFloat(activeProduct.mrp).toFixed(2)}</span>
+                      <span className="modal-discount-badge">
+                        {Math.round(((activeProduct.mrp - activeProduct.baseSellingPrice) / activeProduct.mrp) * 100)}% off
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className={`modal-stock ${isOutOfStock ? 'out' : 'in'}`}>
                   <Package size={15} />
@@ -264,7 +300,7 @@ export default function ProductDetailModal({
                 </div>
               )}
 
-              {/* ✨ Bargain Button */}
+              {/* ✨ Bargain Button — §8/§21 */}
               {!isOutOfStock && activeProduct.bargainable && (
                 checkingEligibility ? (
                   <button className="btn-modal-bargain" disabled>
@@ -282,7 +318,20 @@ export default function ProductDetailModal({
                       </span>
                     )}
                   </button>
-                ) : null
+                ) : bargainRequested ? (
+                  <button className="btn-modal-bargain" disabled style={{ opacity: 0.7 }}>
+                    ✅ Bargain request sent — awaiting admin approval
+                  </button>
+                ) : (
+                  <button
+                    className="btn-modal-bargain"
+                    onClick={handleRequestBargain}
+                    disabled={requestingBargain}
+                    style={{ background: 'transparent', border: '1.5px dashed var(--terra, #C0714F)', color: 'var(--terra, #C0714F)' }}
+                  >
+                    {requestingBargain ? '⏳ Sending…' : '🤝 Request Bargain Price'}
+                  </button>
+                )
               )}
 
               {/* Buy Now */}
