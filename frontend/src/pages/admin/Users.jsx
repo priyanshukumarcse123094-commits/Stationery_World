@@ -453,26 +453,25 @@ export default function Users() {
             <div style={{ marginTop: 24 }}>
               <h5 style={{ marginBottom: 12, fontSize: 15, color: '#374151' }}>Activity Summary</h5>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div style={{ 
-                  padding: 16, 
-                  background: '#eff6ff', 
-                  borderRadius: 8,
-                  border: '1px solid #dbeafe'
-                }}>
+                <div style={{ padding: 16, background: '#eff6ff', borderRadius: 8, border: '1px solid #dbeafe' }}>
                   <div style={{ fontSize: 12, color: '#1e40af', marginBottom: 4 }}>Total Orders</div>
                   <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1e3a8a' }}>
                     {selectedUser._meta?.totalOrders ?? 0}
                   </div>
                 </div>
-                <div style={{ 
-                  padding: 16, 
-                  background: '#f0fdf4', 
-                  borderRadius: 8,
-                  border: '1px solid #bbf7d0'
-                }}>
+                {/* §7: Total Spend */}
+                <div style={{ padding: 16, background: '#fef9c3', borderRadius: 8, border: '1px solid #fde68a' }}>
+                  <div style={{ fontSize: 12, color: '#92400e', marginBottom: 4 }}>Total Spend</div>
+                  <div style={{ fontSize: 20, fontWeight: 'bold', color: '#78350f' }}>
+                    ₹{selectedUser._meta?.totalSpend
+                      ? parseFloat(selectedUser._meta.totalSpend).toLocaleString('en-IN', { maximumFractionDigits: 0 })
+                      : 0}
+                  </div>
+                </div>
+                <div style={{ padding: 16, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', gridColumn: '1 / -1' }}>
                   <div style={{ fontSize: 12, color: '#15803d', marginBottom: 4 }}>Last Order</div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: '#166534' }}>
-                    {selectedUser._meta?.lastOrder 
+                    {selectedUser._meta?.lastOrder
                       ? new Date(selectedUser._meta.lastOrder).toLocaleDateString('en-IN')
                       : 'Never'}
                   </div>
