@@ -392,7 +392,7 @@ export default function Inventory() {
   const [selected,       setSelected]       = useState(null);
   const [form,           setForm]           = useState({
     name: '', description: '', category: DEFAULT_CATEGORIES[0], subCategory: '',
-    costPrice: '', baseSellingPrice: '', bargainable: true, keywords: '',
+    costPrice: '', baseSellingPrice: '', mrp: '', bargainable: true, keywords: '',
     // bargain config fields
     bargainMaxAttempts: 1,
     bargainTiers: [{ price: '' }, { price: '' }, { price: '' }],
@@ -521,6 +521,7 @@ export default function Inventory() {
       category: full.category || DEFAULT_CATEGORIES[0],
       subCategory: full.subCategory || '',
       costPrice: full.costPrice || '', baseSellingPrice: full.baseSellingPrice || '',
+      mrp: full.mrp || '',
       bargainable: !!full.bargainable,
       keywords: (full.keywords || []).join(', '),
       bargainMaxAttempts: full.bargainConfig?.maxAttempts || 1,
@@ -565,8 +566,10 @@ export default function Inventory() {
         name: form.name, description: form.description, category: form.category,
         subCategory: form.subCategory, costPrice: parseFloat(form.costPrice),
         baseSellingPrice: parseFloat(form.baseSellingPrice), bargainable: form.bargainable,
+        mrp: form.mrp ? parseFloat(form.mrp) : (form.category === 'TOYS' ? parseFloat(form.baseSellingPrice) * 1.2 : null),
         keywords: form.keywords.split(',').map(s => s.trim()).filter(Boolean),
         totalStock: parseInt(form.quantityAdded) || 0,
+        initialQuantity: parseInt(form.quantityAdded) || 0,
         lowStockThreshold: parseInt(form.lowStockThreshold) || 10,
         images: imageUrls,
         variantGroupId: selectedVariantGroup ? parseInt(selectedVariantGroup) : null,
@@ -587,7 +590,7 @@ export default function Inventory() {
       if (data?.success) {
         alert('✅ Product created successfully!');
         setSearch(''); setResults([]); setMode('add'); setSelected(null); setSelectedFiles([]); setFilePreviews([]);
-        setForm({ name:'', description:'', category: DEFAULT_CATEGORIES[0], subCategory:'', costPrice:'', baseSellingPrice:'', bargainable: true, keywords:'', bargainMaxAttempts:1, bargainTiers:[{price:''},{price:''},{price:''}], bulkDiscounts:[{minQty:'',discount:'',unit:'RUPEES'}], quantityAdded: 0, lowStockThreshold: 10, investmentSource: 'PROFIT' });
+        setForm({ name:'', description:'', category: DEFAULT_CATEGORIES[0], subCategory:'', costPrice:'', baseSellingPrice:'', mrp: '', bargainable: true, keywords:'', bargainMaxAttempts:1, bargainTiers:[{price:''},{price:''},{price:''}], bulkDiscounts:[{minQty:'',discount:'',unit:'RUPEES'}], quantityAdded: 0, lowStockThreshold: 10, investmentSource: 'PROFIT' });
         await refreshAllData();
       } else {
         alert('❌ ' + (data?.message || 'Create failed'));
@@ -609,6 +612,7 @@ export default function Inventory() {
         name: form.name, description: form.description, category: form.category,
         subCategory: form.subCategory, costPrice: parseFloat(form.costPrice),
         baseSellingPrice: parseFloat(form.baseSellingPrice), bargainable: form.bargainable,
+        mrp: form.mrp ? parseFloat(form.mrp) : (form.category === 'TOYS' ? parseFloat(form.baseSellingPrice) * 1.2 : null),
         keywords: form.keywords.split(',').map(s => s.trim()).filter(Boolean),
         lowStockThreshold: parseInt(form.lowStockThreshold) || 10,
         images: imageUrls,
@@ -630,7 +634,7 @@ export default function Inventory() {
       if (data?.success) {
         alert('✅ Product updated successfully!');
         setSearch(''); setResults([]); setMode('add'); setSelected(null);
-        setForm({ name:'', description:'', category: DEFAULT_CATEGORIES[0], subCategory:'', costPrice:'', baseSellingPrice:'', bargainable: true, keywords:'', bargainMaxAttempts:1, bargainTiers:[{price:''},{price:''},{price:''}], bulkDiscounts:[{minQty:'',discount:'',unit:'RUPEES'}], quantityAdded: 0, lowStockThreshold: 10, investmentSource: 'PROFIT' });
+        setForm({ name:'', description:'', category: DEFAULT_CATEGORIES[0], subCategory:'', costPrice:'', baseSellingPrice:'', mrp: '', bargainable: true, keywords:'', bargainMaxAttempts:1, bargainTiers:[{price:''},{price:''},{price:''}], bulkDiscounts:[{minQty:'',discount:'',unit:'RUPEES'}], quantityAdded: 0, lowStockThreshold: 10, investmentSource: 'PROFIT' });
         await refreshAllData();
       } else {
         alert('❌ ' + (data?.message || 'Update failed'));
@@ -925,6 +929,24 @@ export default function Inventory() {
                         Margin: ₹{(form.baseSellingPrice - form.costPrice).toFixed(0)} ({form.baseSellingPrice > 0 ? (((form.baseSellingPrice - form.costPrice) / form.baseSellingPrice) * 100).toFixed(1) : 0}%)
                       </div>
                     )}
+
+                    <div className="row" style={{ marginTop: 14 }}>
+                      <div className="col">
+                        <label>MRP (₹) <span style={{ fontWeight: 400, fontStyle: 'italic' }}>optional — leave blank to auto-set</span></label>
+                        <input type="number" step="0.01" placeholder={
+                          form.category === 'TOYS' && form.baseSellingPrice
+                            ? `Auto: ₹${(parseFloat(form.baseSellingPrice) * 1.2).toFixed(2)}`
+                            : 'Same as selling price if blank'
+                        }
+                          value={form.mrp}
+                          onChange={e => setForm(f => ({ ...f, mrp: e.target.value }))} />
+                        {form.mrp && form.baseSellingPrice && parseFloat(form.mrp) > parseFloat(form.baseSellingPrice) && (
+                          <div style={{ fontSize: 12, color: '#d97706', marginTop: 3, fontWeight: 600 }}>
+                            Discount: {Math.round(((form.mrp - form.baseSellingPrice) / form.mrp) * 100)}% off shown to customer
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, textTransform: 'none', letterSpacing: 0 }}>
                       <input type="checkbox" checked={form.bargainable} onChange={e => setForm(f => ({ ...f, bargainable: e.target.checked }))} style={{ width: 'auto' }} />
