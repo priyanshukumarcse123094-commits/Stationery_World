@@ -632,8 +632,14 @@
 ═══════════════════════════════════════ */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  /* §2.5: 5–6 cards per row on PC, consistent card widths */
+  grid-template-columns: repeat(5, 1fr);
   gap: 18px;
+  align-items: start;
+}
+
+.product-grid .grid-item {
+  min-width: 0; /* prevent overflow */
 }
 
 /* Search results label */
@@ -929,6 +935,20 @@
 /* ═══════════════════════════════════════
    RESPONSIVE
 ═══════════════════════════════════════ */
+
+/* Wide: keep 5 columns (set above). At very large screens allow 6 */
+@media (min-width: 1600px) {
+  .product-grid { grid-template-columns: repeat(6, 1fr); }
+}
+
+@media (max-width: 1280px) {
+  .product-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (max-width: 1024px) {
+  .product-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
 @media (max-width: 900px) {
   .shop-hero {
     grid-template-columns: 1fr;
@@ -939,6 +959,8 @@
   .hero-right { justify-content: flex-start; }
   .hero-card  { max-width: 320px; }
   .hero-stats { gap: 24px; }
+
+  .product-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 640px) {
@@ -961,6 +983,7 @@
   .search-and-sort { flex-wrap: wrap; }
   .search-wrap input { width: 100%; min-width: 0; }
 
+  /* §2.5: 2 per row on mobile */
   .product-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
@@ -973,5 +996,6 @@
 }
 
 @media (max-width: 380px) {
-  .product-grid { grid-template-columns: 1fr; }
+  /* Even on tiny phones keep 2 columns — allow cards to be small */
+  .product-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
 }
