@@ -77,10 +77,11 @@ export default function ForgotPassword() {
 
       sessionStorage.setItem('resetEmail', email);
 
-      // Development fallback: OTP is returned in the response when email delivery failed
+      // §1.2 — OTP_FALLBACK: only auto-fill in dev mode; never expose OTP value in production.
       if (data.data?.otp) {
+        // Dev fallback only — auto-fill but do NOT render the OTP value visibly in the UI
         setOtp(data.data.otp);
-        setMessage('Email delivery failed in dev mode. OTP has been auto-filled.');
+        setMessage('⚠️ Dev mode: OTP auto-filled (email delivery skipped).');
       } else {
         setMessage(`OTP sent to ${email}. Check your inbox!`);
       }
