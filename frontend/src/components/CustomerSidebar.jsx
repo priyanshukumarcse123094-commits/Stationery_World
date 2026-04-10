@@ -1,8 +1,20 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import './customer.css';
 
 export default function CustomerSidebar({ onNavigate }) {
   const cls = ({ isActive }) => isActive ? 'active' : undefined;
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleCategoryClick = () => {
+    setCategoryOpen(prev => !prev);
+    navigate('/customer');
+    setTimeout(() => {
+      const el = document.getElementById('categories');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }, 120);
+  };
 
   return (
     <aside className="customer-sidebar">
@@ -22,11 +34,38 @@ export default function CustomerSidebar({ onNavigate }) {
               <span className="cs-icon">👤</span> You
             </NavLink>
           </li>
-          <li>
-            <NavLink to="/customer/bargain" className={cls} onClick={onNavigate}>
-              <span className="cs-icon">🤝</span> Bargain
-            </NavLink>
+
+          {/* Shop By Category — new per §2.2 / §2.4 */}
+          <li className="cs-category-entry">
+            <button
+              className={`cs-category-toggle${categoryOpen ? ' open' : ''}`}
+              onClick={handleCategoryClick}
+              aria-expanded={categoryOpen}
+            >
+              <span className="cs-icon">🗂️</span>
+              <span className="cs-label">Shop By Category</span>
+              <span className="cs-chevron">{categoryOpen ? '▲' : '▾'}</span>
+            </button>
+            <ul className={`cs-subcategory-list${categoryOpen ? ' visible' : ''}`}>
+              {[
+                { key: 'STATIONERY', icon: '✏️' },
+                { key: 'BOOKS',      icon: '📚' },
+                { key: 'TOYS',       icon: '🧸' },
+              ].map(({ key, icon }) => (
+                <li key={key}>
+                  <NavLink
+                    to={`/customer?category=${key}`}
+                    className={cls}
+                    onClick={onNavigate}
+                  >
+                    <span className="cs-icon">{icon}</span>
+                    {key.charAt(0) + key.slice(1).toLowerCase()}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
           </li>
+
           <li>
             <NavLink to="/customer/wishlist" className={cls} onClick={onNavigate}>
               <span className="cs-icon">❤️</span> Wishlist
