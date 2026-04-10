@@ -447,7 +447,15 @@ textarea { min-height: 90px; }
   line-height: 1;
   display: inline-flex;
   align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  /* Reset <button> defaults */
+  background: none;
+  border: none;
+  padding: 0;
+  transition: opacity 0.18s ease;
 }
+.topbar-brand:hover { opacity: 0.85; }
 .topbar[data-variant="admin"] .topbar-brand    { color: rgba(245,235,210,0.88); }
 .topbar[data-variant="customer"] .topbar-brand { color: var(--text-primary); }
 [data-theme="dark"] .topbar[data-variant="customer"] .topbar-brand { color: rgba(220,240,230,0.88); }
@@ -703,14 +711,24 @@ textarea { min-height: 90px; }
 .topbar-badge-admin {
   font-family: var(--font-body);
   font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.10em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  background: rgba(192,113,79,0.22);
-  color: var(--terra);
-  border: 1px solid rgba(192,113,79,0.30);
-  padding: 2px 8px;
-  border-radius: 4px;
+  background: rgba(192,113,79,0.28);
+  color: var(--terra, #C0714F);
+  border: 1.5px solid rgba(192,113,79,0.45);
+  padding: 3px 9px;
+  border-radius: 5px;
+  box-shadow: 0 0 0 3px rgba(192,113,79,0.08);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Badge rendered inside the brand button — slightly more prominent */
+.topbar-badge-admin--brand {
+  background: rgba(192,113,79,0.20);
+  margin-left: 2px;
+  font-size: 9px;
 }
 
 /* Legacy badge selectors */
