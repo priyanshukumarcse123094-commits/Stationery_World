@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X, Heart, ShoppingCart, Package,
-  Minus, Plus, Zap, Bell, Tag, CheckCircle2
+  Minus, Plus, Zap, Bell, Tag, CheckCircle2,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import BargainModal from './BargainModal';
 import './ProductDetailModal.css';
@@ -24,11 +25,16 @@ export default function ProductDetailModal({
   const [addedFlash, setAddedFlash]       = useState(false);
   const [activeProduct, setActiveProduct] = useState(product);
 
-  const [showBargainModal, setShowBargainModal]       = useState(false);
-  const [eligibility, setEligibility]                 = useState(null);
-  const [checkingEligibility, setCheckingEligibility] = useState(false);
-  const [bargainRequested, setBargainRequested]       = useState(false);
-  const [requestingBargain, setRequestingBargain]     = useState(false);
+  const [showBargainModal, setShowBargainModal]   = useState(false);
+  const [eligibility, setEligibility]             = useState(null);
+  const [checkingEligibility, setCheckingElig]    = useState(false);
+  const [bargainRequested, setBargainRequested]   = useState(false);
+  const [requestingBargain, setRequestingBargain] = useState(false);
+
+  // Touch / swipe state
+  const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
+  const isDragging  = useRef(false);
 
   const getImageUrl = (url) => {
     if (!url) return '/placeholder.png';
@@ -38,14 +44,21 @@ export default function ProductDetailModal({
 
   useEffect(() => { setSelectedImage(0); setQuantity(1); }, [activeProduct.id]);
 
-  // Close on Escape key
+  // Keyboard: Escape closes, Arrow keys change image
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape')      onClose();
+      if (e.key === 'ArrowLeft')   prevImage();
+      if (e.key === 'ArrowRight')  nextImage();
+    };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose, activeProduct]);
 
-  const images        = activeProduct.images || [];
+  const images       = activeProduct.images || [];
+  const totalImages  = images.length;
+
   const currentImgUrl = images[selectedImage]?.url
     ? getImageUrl(images[selectedImage].url)
     : '/placeholder.png';
@@ -58,13 +71,65 @@ export default function ProductDetailModal({
   const hasVariants  = siblings.length > 1;
   const variantType  = variantGroup?.variantType ?? null;
 
+  // ── Image navigation ──────────────────────────────────────
+  const prevImage = useCallback(() => {
+    setSelectedImage(i => (i === 0 ? totalImages - 1 : i - 1));
+  }, [totalImages]);
+
+  const nextImage = useCallback(() => {
+    setSelectedImage(i => (i === totalImages - 1 ? 0 : i + 1));
+  }, [totalImages]);
+
+  // ── Touch / swipe handlers ────────────────────────────────
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    isDragging.current  = false;
+  };
+
+  const handleTouchMove = (e) => {
+    if (touchStartX.current === null) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartX.current);
+    const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
+    if (dx > dy && dx > 8) isDragging.current = true;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null || totalImages <= 1) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (isDragging.current && Math.abs(dx) > 40) {
+      dx < 0 ? nextImage() : prevImage();
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+    isDragging.current  = false;
+  };
+
+  // ── Mouse drag (PC) ───────────────────────────────────────
+  const mouseStartX  = useRef(null);
+  const mouseActive  = useRef(false);
+
+  const handleMouseDown = (e) => {
+    if (totalImages <= 1) return;
+    mouseStartX.current = e.clientX;
+    mouseActive.current = true;
+  };
+  const handleMouseUp = (e) => {
+    if (!mouseActive.current) return;
+    mouseActive.current = false;
+    const dx = e.clientX - mouseStartX.current;
+    if (Math.abs(dx) > 40) dx < 0 ? nextImage() : prevImage();
+  };
+  const handleMouseLeave = () => { mouseActive.current = false; };
+
+  // ── Bargain ───────────────────────────────────────────────
   useEffect(() => {
     if (activeProduct.bargainable && !isOutOfStock) checkBargainEligibility();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProduct.id, activeProduct.bargainable]);
 
   const checkBargainEligibility = async () => {
-    setCheckingEligibility(true);
+    setCheckingElig(true);
     try {
       const token = localStorage.getItem('token');
       const headers = { 'Content-Type': 'application/json' };
@@ -72,8 +137,8 @@ export default function ProductDetailModal({
       const res    = await fetch(`${API_BASE_URL}/api/bargain/eligibility/${activeProduct.id}`, { headers });
       const result = await res.json();
       if (result.success) setEligibility(result.data);
-    } catch (e) { console.error('Eligibility check failed:', e); }
-    finally { setCheckingEligibility(false); }
+    } catch (e) { console.error(e); }
+    finally { setCheckingElig(false); }
   };
 
   const handleBargainSuccess = (data) => {
@@ -99,6 +164,7 @@ export default function ProductDetailModal({
     finally { setRequestingBargain(false); }
   };
 
+  // ── Cart ──────────────────────────────────────────────────
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) onAddToCart(activeProduct);
     setAddedFlash(true);
@@ -110,6 +176,7 @@ export default function ProductDetailModal({
     if (n >= 1 && n <= maxQuantity) setQuantity(n);
   };
 
+  // ── Notify ────────────────────────────────────────────────
   const handleNotifyMe = async () => {
     setNotifying(true);
     try {
@@ -150,247 +217,286 @@ export default function ProductDetailModal({
             <X size={18} strokeWidth={2.5} />
           </button>
 
-          <div className="modal-content">
+          {/* ════════════════════════════════════════
+              LEFT — Image slider panel
+          ════════════════════════════════════════ */}
+          <div className="modal-left">
 
-            {/* ════════════════════════════════
-                LEFT — Image Panel
-            ════════════════════════════════ */}
-            <div className="modal-left">
-              {/* Main image */}
-              <div className="main-image">
-                <img
-                  src={currentImgUrl}
-                  alt={activeProduct.name}
-                  onError={(e) => (e.target.src = '/placeholder.png')}
-                />
-                {isOutOfStock && (
-                  <div className="modal-stock-badge">Out of Stock</div>
-                )}
-              </div>
+            {/* Main image with swipe/drag/arrow support */}
+            <div
+              className="main-image"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onMouseDown={handleMouseDown}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              style={{ cursor: totalImages > 1 ? 'grab' : 'default', userSelect: 'none' }}
+            >
+              <img
+                key={selectedImage}
+                src={currentImgUrl}
+                alt={activeProduct.name}
+                onError={(e) => (e.target.src = '/placeholder.png')}
+                draggable={false}
+              />
 
-              {/* Thumbnails */}
-              {images.length > 1 && (
-                <div className="image-thumbnails">
-                  {images.map((img, idx) => (
-                    <div
-                      key={idx}
-                      className={`thumbnail ${idx === selectedImage ? 'active' : ''}`}
-                      onClick={() => setSelectedImage(idx)}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`View image ${idx + 1}`}
-                    >
-                      <img
-                        src={getImageUrl(img.url)}
-                        alt={`${activeProduct.name} ${idx + 1}`}
-                        onError={(e) => (e.target.src = '/placeholder.png')}
-                      />
-                    </div>
-                  ))}
-                </div>
+              {isOutOfStock && (
+                <div className="modal-stock-badge">Out of Stock</div>
               )}
 
-              {/* Stock indicator — bottom of left panel */}
-              <div className={`modal-stock-inline ${isOutOfStock ? 'out' : 'in'}`}>
-                <Package size={13} />
-                {isOutOfStock ? 'Out of Stock' : `${activeProduct.totalStock} in stock`}
-              </div>
+              {/* Prev / Next arrows — only shown when multiple images */}
+              {totalImages > 1 && (
+                <>
+                  <button
+                    className="img-nav-btn img-nav-prev"
+                    onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft size={20} strokeWidth={2.5} />
+                  </button>
+                  <button
+                    className="img-nav-btn img-nav-next"
+                    onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                    aria-label="Next image"
+                  >
+                    <ChevronRight size={20} strokeWidth={2.5} />
+                  </button>
+
+                  {/* Dot indicators */}
+                  <div className="img-dots">
+                    {images.map((_, idx) => (
+                      <button
+                        key={idx}
+                        className={`img-dot${idx === selectedImage ? ' active' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); setSelectedImage(idx); }}
+                        aria-label={`Image ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Counter badge */}
+                  <div className="img-counter">{selectedImage + 1} / {totalImages}</div>
+                </>
+              )}
             </div>
 
-            {/* ════════════════════════════════
-                RIGHT — Details Panel
-                Order per §2.6:
-                1. Category pill
-                2. Name
-                3. Price / MRP
-                4. Variant chips
-                5. Quantity selector
-                6. Add to Cart + Wishlist   ← BEFORE description
-                7. Buy Now
-                8. Bargain
-                9. Description
-                10. SKU / Meta / Seller
-            ════════════════════════════════ */}
-            <div className="modal-right">
-
-              {/* 1 — Category */}
-              <div className="modal-category">
-                <Tag size={10} />
-                {activeProduct.category}
-                {activeProduct.subCategory && (
-                  <span className="modal-subcategory"> · {activeProduct.subCategory}</span>
-                )}
-              </div>
-
-              {/* 2 — Name */}
-              <h2 className="modal-title">{activeProduct.name}</h2>
-
-              {/* 3 — Price + MRP */}
-              <div className="modal-price-row">
-                <span className="modal-price">
-                  ₹{parseFloat(activeProduct.baseSellingPrice).toFixed(2)}
-                </span>
-                {hasMrpDiscount && (
-                  <>
-                    <span className="modal-mrp">
-                      MRP ₹{parseFloat(activeProduct.mrp).toFixed(2)}
-                    </span>
-                    <span className="modal-discount-badge">{discountPct}% off</span>
-                  </>
-                )}
-              </div>
-
-              {/* 4 — Variant chips */}
-              {hasVariants && (
-                <div className="modal-variants">
-                  <div className="modal-variants-label">
-                    {VARIANT_LABEL[variantType] || 'Variant'}
-                  </div>
-                  <div className="modal-variants-chips">
-                    {siblings.map((sib) => {
-                      const isActive = sib.id === activeProduct.id;
-                      const sibImg   = sib.images?.find(i => i.isPrimary)?.url || sib.images?.[0]?.url;
-                      return (
-                        <button
-                          key={sib.id}
-                          className={`variant-chip${isActive ? ' active' : ''}${sib.totalStock === 0 ? ' oos' : ''}`}
-                          onClick={() => { setActiveProduct(sib); setEligibility(null); }}
-                          title={sib.name}
-                        >
-                          {sibImg && (
-                            <img
-                              src={sibImg.startsWith('http') ? sibImg : `${API_BASE_URL}${sibImg}`}
-                              alt={sib.name}
-                              onError={e => e.target.style.display = 'none'}
-                            />
-                          )}
-                          <span>{sib.name}</span>
-                          {sib.totalStock === 0 && <span className="chip-oos">OOS</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* 5 — Quantity */}
-              {!isOutOfStock && (
-                <div className="modal-qty-row">
-                  <span className="modal-qty-label">Qty</span>
-                  <div className="quantity-controls">
-                    <button onClick={() => handleQuantityChange(-1)} disabled={quantity <= 1} aria-label="Decrease">
-                      <Minus size={13} />
-                    </button>
-                    <span className="quantity-value">{quantity}</span>
-                    <button onClick={() => handleQuantityChange(1)} disabled={quantity >= maxQuantity} aria-label="Increase">
-                      <Plus size={13} />
-                    </button>
-                  </div>
-                  <span className="modal-qty-max">max {maxQuantity}</span>
-                </div>
-              )}
-
-              {/* 6 — Add to Cart + Wishlist (or Notify if OOS) */}
-              <div className="modal-actions">
-                {isOutOfStock ? (
-                  <button
-                    className={`btn-modal-notify ${notified ? 'notified' : 'default'}`}
-                    onClick={handleNotifyMe}
-                    disabled={notifying || notified}
+            {/* Thumbnail strip */}
+            {totalImages > 1 && (
+              <div className="image-thumbnails">
+                {images.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className={`thumbnail${idx === selectedImage ? ' active' : ''}`}
+                    onClick={() => setSelectedImage(idx)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setSelectedImage(idx)}
+                    aria-label={`Image ${idx + 1}`}
                   >
-                    {notified ? <><CheckCircle2 size={16} /> Notified!</> :
-                     notifying ? <>Registering…</> :
-                     <><Bell size={16} /> Notify Me</>}
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      className={`btn-modal-cart${addedFlash ? ' success' : ''}`}
-                      onClick={handleAddToCart}
-                      disabled={addedFlash}
-                    >
-                      {addedFlash
-                        ? <><CheckCircle2 size={16} /> Added!</>
-                        : <><ShoppingCart size={16} /> Add to Cart</>}
-                    </button>
-                    <button
-                      className={`btn-modal-wishlist${isWishlisted ? ' wishlisted' : ''}`}
-                      onClick={() => { onToggleWishlist?.(activeProduct); onClose(); }}
-                      aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                    >
-                      <Heart size={16} fill={isWishlisted ? 'currentColor' : 'none'} />
-                    </button>
-                  </>
-                )}
+                    <img
+                      src={getImageUrl(img.url)}
+                      alt={`${activeProduct.name} ${idx + 1}`}
+                      onError={(e) => (e.target.src = '/placeholder.png')}
+                    />
+                  </div>
+                ))}
               </div>
+            )}
 
-              {/* 7 — Buy Now */}
-              {!isOutOfStock && onBuyNow && (
-                <button className="btn-modal-buynow" onClick={() => onBuyNow(activeProduct)}>
-                  <Zap size={15} /> Buy Now
-                </button>
+            {/* Stock pill */}
+            <div className={`modal-stock-inline ${isOutOfStock ? 'out' : 'in'}`}>
+              <Package size={12} />
+              {isOutOfStock ? 'Out of Stock' : `${activeProduct.totalStock} in stock`}
+            </div>
+          </div>
+
+          {/* ════════════════════════════════════════
+              RIGHT — Details panel
+              ORDER:  Category → Name → Price →
+                      Variants → Qty →
+                      Add to Cart + Wishlist →
+                      Buy Now → Bargain →
+                      Description → Meta/Seller
+          ════════════════════════════════════════ */}
+          <div className="modal-right">
+
+            {/* 1 — Category */}
+            <div className="modal-category">
+              <Tag size={10} />
+              {activeProduct.category}
+              {activeProduct.subCategory && (
+                <span className="modal-subcategory"> · {activeProduct.subCategory}</span>
               )}
+            </div>
 
-              {/* 8 — Bargain */}
-              {!isOutOfStock && activeProduct.bargainable && (
-                checkingEligibility ? (
-                  <button className="btn-modal-bargain" disabled>Checking eligibility…</button>
-                ) : eligibility?.canBargain ? (
-                  <button className="btn-modal-bargain" onClick={() => setShowBargainModal(true)}>
-                    💰 Make an Offer
-                    {eligibility.metadata?.remainingAttempts > 0 && (
-                      <span className="attempts-badge">{eligibility.metadata.remainingAttempts} left</span>
-                    )}
-                  </button>
-                ) : bargainRequested ? (
-                  <button className="btn-modal-bargain" disabled>✅ Request sent</button>
-                ) : (
-                  <button
-                    className="btn-modal-bargain btn-modal-bargain--outline"
-                    onClick={handleRequestBargain}
-                    disabled={requestingBargain}
-                  >
-                    {requestingBargain ? '⏳ Sending…' : '🤝 Request Bargain'}
-                  </button>
-                )
-              )}
+            {/* 2 — Name */}
+            <h2 className="modal-title">{activeProduct.name}</h2>
 
-              {/* 9 — Description */}
-              <div className="modal-description">
-                <div className="modal-description-label">Description</div>
-                <p>{activeProduct.description || 'No description available.'}</p>
-              </div>
-
-              {/* 10 — Meta + Seller */}
-              <div className="product-meta-info">
-                {activeProduct.id && (
-                  <div className="meta-item"><strong>SKU</strong>{activeProduct.id}</div>
-                )}
-                {activeProduct.subCategory && (
-                  <div className="meta-item"><strong>Sub-category</strong>{activeProduct.subCategory}</div>
-                )}
-                <div className="meta-item">
-                  <strong>Status</strong>
-                  <span style={{ color: isOutOfStock ? 'var(--m-red)' : 'var(--m-green)', fontWeight: 600 }}>
-                    {isOutOfStock ? 'Out of Stock' : 'In Stock'}
+            {/* 3 — Price + MRP */}
+            <div className="modal-price-row">
+              <span className="modal-price">
+                ₹{parseFloat(activeProduct.baseSellingPrice).toFixed(2)}
+              </span>
+              {hasMrpDiscount && (
+                <>
+                  <span className="modal-mrp">
+                    MRP ₹{parseFloat(activeProduct.mrp).toFixed(2)}
                   </span>
+                  <span className="modal-discount-badge">{discountPct}% off</span>
+                </>
+              )}
+            </div>
+
+            {/* 4 — Variant chips */}
+            {hasVariants && (
+              <div className="modal-variants">
+                <div className="modal-variants-label">
+                  {VARIANT_LABEL[variantType] || 'Variant'}
                 </div>
-
-                {activeProduct.createdBy && (
-                  <div className="seller-info-block">
-                    <div className="seller-avatar">👤</div>
-                    <div className="seller-info-text">
-                      <span className="seller-name">{activeProduct.createdBy.name}</span>
-                      <span className={`seller-role-badge ${activeProduct.createdBy.role === 'ADMIN' ? 'admin' : 'seller'}`}>
-                        {activeProduct.createdBy.role}
-                      </span>
-                    </div>
-                  </div>
-                )}
+                <div className="modal-variants-chips">
+                  {siblings.map((sib) => {
+                    const isActive = sib.id === activeProduct.id;
+                    const sibImg   = sib.images?.find(i => i.isPrimary)?.url || sib.images?.[0]?.url;
+                    return (
+                      <button
+                        key={sib.id}
+                        className={`variant-chip${isActive ? ' active' : ''}${sib.totalStock === 0 ? ' oos' : ''}`}
+                        onClick={() => { setActiveProduct(sib); setEligibility(null); }}
+                        title={sib.name}
+                      >
+                        {sibImg && (
+                          <img
+                            src={sibImg.startsWith('http') ? sibImg : `${API_BASE_URL}${sibImg}`}
+                            alt={sib.name}
+                            onError={e => e.target.style.display = 'none'}
+                          />
+                        )}
+                        <span>{sib.name}</span>
+                        {sib.totalStock === 0 && <span className="chip-oos">OOS</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+            )}
 
-            </div>{/* end modal-right */}
-          </div>{/* end modal-content */}
+            {/* 5 — Quantity */}
+            {!isOutOfStock && (
+              <div className="modal-qty-row">
+                <span className="modal-qty-label">Qty</span>
+                <div className="quantity-controls">
+                  <button onClick={() => handleQuantityChange(-1)} disabled={quantity <= 1} aria-label="Decrease">
+                    <Minus size={13} />
+                  </button>
+                  <span className="quantity-value">{quantity}</span>
+                  <button onClick={() => handleQuantityChange(1)} disabled={quantity >= maxQuantity} aria-label="Increase">
+                    <Plus size={13} />
+                  </button>
+                </div>
+                <span className="modal-qty-max">max {maxQuantity}</span>
+              </div>
+            )}
+
+            {/* 6 — Add to Cart + Wishlist  (or Notify if OOS) */}
+            <div className="modal-actions">
+              {isOutOfStock ? (
+                <button
+                  className={`btn-modal-notify ${notified ? 'notified' : 'default'}`}
+                  onClick={handleNotifyMe}
+                  disabled={notifying || notified}
+                >
+                  {notified  ? <><CheckCircle2 size={16} /> Notified!</>  :
+                   notifying ? <>Registering…</>                          :
+                               <><Bell size={16} /> Notify Me</>}
+                </button>
+              ) : (
+                <>
+                  <button
+                    className={`btn-modal-cart${addedFlash ? ' success' : ''}`}
+                    onClick={handleAddToCart}
+                    disabled={addedFlash}
+                  >
+                    {addedFlash
+                      ? <><CheckCircle2 size={16} /> Added!</>
+                      : <><ShoppingCart size={16} /> Add to Cart</>}
+                  </button>
+                  <button
+                    className={`btn-modal-wishlist${isWishlisted ? ' wishlisted' : ''}`}
+                    onClick={() => { onToggleWishlist?.(activeProduct); onClose(); }}
+                    aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                  >
+                    <Heart size={17} fill={isWishlisted ? 'currentColor' : 'none'} />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* 7 — Buy Now */}
+            {!isOutOfStock && onBuyNow && (
+              <button className="btn-modal-buynow" onClick={() => onBuyNow(activeProduct)}>
+                <Zap size={15} /> Buy Now
+              </button>
+            )}
+
+            {/* 8 — Bargain */}
+            {!isOutOfStock && activeProduct.bargainable && (
+              checkingEligibility ? (
+                <button className="btn-modal-bargain" disabled>Checking eligibility…</button>
+              ) : eligibility?.canBargain ? (
+                <button className="btn-modal-bargain" onClick={() => setShowBargainModal(true)}>
+                  💰 Make an Offer
+                  {eligibility.metadata?.remainingAttempts > 0 && (
+                    <span className="attempts-badge">{eligibility.metadata.remainingAttempts} left</span>
+                  )}
+                </button>
+              ) : bargainRequested ? (
+                <button className="btn-modal-bargain" disabled>✅ Request sent</button>
+              ) : (
+                <button
+                  className="btn-modal-bargain btn-modal-bargain--outline"
+                  onClick={handleRequestBargain}
+                  disabled={requestingBargain}
+                >
+                  {requestingBargain ? '⏳ Sending…' : '🤝 Request Bargain'}
+                </button>
+              )
+            )}
+
+            {/* 9 — Description */}
+            <div className="modal-description">
+              <div className="modal-description-label">Description</div>
+              <p>{activeProduct.description || 'No description available.'}</p>
+            </div>
+
+            {/* 10 — Meta + Seller */}
+            <div className="product-meta-info">
+              {activeProduct.id && (
+                <div className="meta-item"><strong>SKU</strong>{activeProduct.id}</div>
+              )}
+              {activeProduct.subCategory && (
+                <div className="meta-item"><strong>Sub-category</strong>{activeProduct.subCategory}</div>
+              )}
+              <div className="meta-item">
+                <strong>Status</strong>
+                <span style={{ color: isOutOfStock ? 'var(--m-red)' : 'var(--m-green)', fontWeight: 600 }}>
+                  {isOutOfStock ? 'Out of Stock' : 'In Stock'}
+                </span>
+              </div>
+              {activeProduct.createdBy && (
+                <div className="seller-info-block">
+                  <div className="seller-avatar">👤</div>
+                  <div className="seller-info-text">
+                    <span className="seller-name">{activeProduct.createdBy.name}</span>
+                    <span className={`seller-role-badge ${activeProduct.createdBy.role === 'ADMIN' ? 'admin' : 'seller'}`}>
+                      {activeProduct.createdBy.role}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>{/* end modal-right */}
         </div>{/* end product-detail-modal */}
       </div>
 
