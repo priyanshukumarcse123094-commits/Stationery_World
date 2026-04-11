@@ -300,6 +300,7 @@
 .cs-panel-wrapper {
   overflow: hidden;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -494,6 +495,7 @@
   overflow: hidden;
   position: relative;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -503,6 +505,7 @@
   flex-direction: row;
   width: 300%;
   flex: 1;
+  min-height: 0;
   transition: transform 0.30s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
 }
@@ -512,6 +515,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 /* Slide positions */
 .cs-panel--main          .cs-panels-row { transform: translateX(0); }
