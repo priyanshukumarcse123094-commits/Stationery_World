@@ -1733,3 +1733,137 @@ span[style*="dc3545"], span[style*="3498db"] {
   margin: 8px 12px;
   border-radius: 1px;
 }
+
+
+/* ═══════════════════════════════════════════════════════
+   ADMIN SIDEBAR — Three-panel sliding §2.4
+   ═══════════════════════════════════════════════════════ */
+.sidebar-panel-wrapper {
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+.sidebar-panels-row {
+  display: flex;
+  flex-direction: row;
+  width: 300%;
+  flex: 1;
+  transition: transform 0.30s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+.sidebar-panel {
+  width: 33.333%;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-panel--main          .sidebar-panels-row { transform: translateX(0); }
+.sidebar-panel--categories    .sidebar-panels-row { transform: translateX(-33.333%); }
+.sidebar-panel--subcategories .sidebar-panels-row { transform: translateX(-66.666%); }
+
+/* Shop By Category trigger button */
+.sidebar-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  padding: 10px 18px;
+  border-radius: 8px;
+  transition: background 0.18s ease, transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  text-align: left;
+}
+.sidebar-nav-btn:hover { background: rgba(255,255,255,0.06); transform: translateX(4px); }
+.sidebar-arrow { margin-left: auto; font-size: 16px; opacity: 0.5; transition: transform 0.2s; }
+.sidebar-nav-btn:hover .sidebar-arrow { transform: translateX(3px); opacity: 0.9; }
+
+/* Panel header */
+.sidebar-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 4px;
+}
+.sidebar-back-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  opacity: 0.65;
+  transition: opacity 0.18s, background 0.18s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.sidebar-back-btn:hover { opacity: 1; background: rgba(255,255,255,0.07); }
+.sidebar-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Category tiles */
+.sidebar-category-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: rgba(255,255,255,0.03);
+  border: none;
+  border-left: 3px solid var(--tile-color, #888);
+  color: inherit;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 12px 16px;
+  margin: 3px 0;
+  border-radius: 0 8px 8px 0;
+  text-align: left;
+  transition: background 0.2s, transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+.sidebar-category-tile:hover { background: rgba(255,255,255,0.08); transform: translateX(4px); }
+.sidebar-category-tile.active { background: rgba(255,255,255,0.10); font-weight: 700; }
+
+/* Subcategory items */
+.sidebar-subcat-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 9px 16px;
+  border-radius: 7px;
+  text-align: left;
+  opacity: 0.78;
+  transition: background 0.18s, opacity 0.18s, transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+.sidebar-subcat-item:hover { background: rgba(255,255,255,0.07); opacity: 1; transform: translateX(4px); }
+.sidebar-subcat-item.active { background: rgba(255,255,255,0.11); font-weight: 600; opacity: 1; }
+.sidebar-subcat-all { font-weight: 500; opacity: 0.9; }
+.sidebar-empty-subcats { padding: 16px; font-size: 12px; opacity: 0.4; font-style: italic; }
