@@ -10,6 +10,8 @@ const AdminLayout = () => {
   const { open, setOpen } = useSidebar();
   const location = useLocation();
   const [animatePage, setAnimatePage] = useState(true);
+  // §2.4: Products shared from AdminShopping so Sidebar can derive subCategories
+  const [adminProducts, setAdminProducts] = useState([]);
 
   useEffect(() => {
     const handleKeyShortcuts = (e) => {
@@ -41,7 +43,7 @@ const AdminLayout = () => {
 
   return (
     <div className="admin-layout">
-      <Sidebar />
+      <Sidebar products={adminProducts} />
       {/* Backdrop to close sidebar on mobile when tapping outside */}
       {open && (
         <div className="sidebar-backdrop" onClick={() => setOpen(false)} aria-hidden="true" />
@@ -49,7 +51,7 @@ const AdminLayout = () => {
       <div className={`admin-main${open ? "" : " sidebar-closed"}`}>
         <Topbar />
         <div className={`admin-content${animatePage ? ' page-transition' : ''}`}>
-          <Outlet />
+          <Outlet context={{ setAdminProducts }} />
         </div>
       </div>
       {/* Subtle animated mascot to make UI feel more lively */}
