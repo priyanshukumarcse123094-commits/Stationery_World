@@ -5,46 +5,49 @@ import '../../Style/shop.css';
 import './customer.css';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { CategoryProvider } from '../context/CategoryContext';
 
 export default function CustomerLayout() {
   const location = useLocation();
-  const [showSidebar, setShowSidebar] = useState(false);
-  const [animatePage, setAnimatePage] = useState(true);
+  const [showSidebar, setShowSidebar]   = useState(false);
+  const [animatePage, setAnimatePage]   = useState(true);
+  // Products are fetched in Shop.jsx; we lift them up here so
+  // the sidebar can derive subCategories from live data.
+  const [products, setProducts] = useState([]);
 
   useEffect(() => {
     const activateTimer = window.setTimeout(() => setAnimatePage(true), 0);
     const timer = window.setTimeout(() => setAnimatePage(false), 520);
-    return () => {
-      window.clearTimeout(activateTimer);
-      window.clearTimeout(timer);
-    };
+    return () => { window.clearTimeout(activateTimer); window.clearTimeout(timer); };
   }, [location.pathname]);
 
   return (
-    <div className={`customer-layout ${showSidebar ? 'sidebar-open' : ''}`}>
-      <CustomerSidebar onNavigate={() => setShowSidebar(false)} />
-      <div className="customer-main">
-        <Topbar
-          variant="customer"
-          sidebarOpen={showSidebar}
-          onToggleSidebar={() => setShowSidebar(s => !s)}
+    <CategoryProvider>
+      <div className={`customer-layout ${showSidebar ? 'sidebar-open' : ''}`}>
+        <CustomerSidebar
+          onNavigate={() => setShowSidebar(false)}
+          products={products}
         />
-        {/* Backdrop overlay — closes sidebar when tapping outside on mobile */}
-        {showSidebar && (
-          <div
-            className="customer-sidebar-backdrop"
-            onClick={() => setShowSidebar(false)}
-            aria-hidden="true"
+        <div className="customer-main">
+          <Topbar
+            variant="customer"
+            sidebarOpen={showSidebar}
+            onToggleSidebar={() => setShowSidebar(s => !s)}
           />
-        )}
-        <main
-          className={`customer-content${animatePage ? ' page-transition' : ''}`}
-        >
-          <Outlet />
-        </main>
+          {showSidebar && (
+            <div
+              className="customer-sidebar-backdrop"
+              onClick={() => setShowSidebar(false)}
+              aria-hidden="true"
+            />
+          )}
+          <main className={`customer-content${animatePage ? ' page-transition' : ''}`}>
+            {/* Pass setProducts down via Outlet context so Shop.jsx can share its product list */}
+            <Outlet context={{ setProducts }} />
+          </main>
+        </div>
+        <CartoonMascot position="bottom-right" />
       </div>
-      {/* Subtle animated mascot to brighten the page */}
-      <CartoonMascot position="bottom-right" />
-    </div>
+    </CategoryProvider>
   );
 }
