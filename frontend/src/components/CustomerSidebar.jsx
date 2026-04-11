@@ -1,19 +1,63 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+/**
+ * CustomerSidebar — §2.2 / §2.4
+ *
+ * Three-panel sidebar that SLIDES between views:
+ *   main → categories → subcategories
+ *
+ * State lives in CategoryContext so Shop.jsx can react to
+ * selectedCategory / selectedSubCategory.
+ */
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useCategory } from '../context/CategoryContext';
 import './customer.css';
 
-export default function CustomerSidebar({ onNavigate }) {
-  const cls = ({ isActive }) => isActive ? 'active' : undefined;
-  const [categoryOpen, setCategoryOpen] = useState(false);
-  const navigate = useNavigate();
+const CATEGORY_META = {
+  STATIONERY: { icon: '✏️', label: 'Stationery', color: '#d97706' },
+  BOOKS:      { icon: '📚', label: 'Books',       color: '#2563eb' },
+  TOYS:       { icon: '🧸', label: 'Toys',        color: '#16a34a' },
+};
 
-  const handleCategoryClick = () => {
-    setCategoryOpen(prev => !prev);
-    navigate('/customer');
-    setTimeout(() => {
-      const el = document.getElementById('categories');
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
-    }, 120);
+export default function CustomerSidebar({ onNavigate, products = [] }) {
+  const cls = ({ isActive }) => (isActive ? 'active' : undefined);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const {
+    sidebarView,
+    selectedCategory,
+    selectedSubCategory,
+    openCategories,
+    openSubCategories,
+    selectSubCategory,
+    backToCategories,
+    backToMain,
+    resetCategory,
+  } = useCategory();
+
+  useEffect(() => {
+    if (!location.pathname.startsWith('/customer')) resetCategory();
+  }, [location.pathname, resetCategory]);
+
+  const subCategories = selectedCategory
+    ? [...new Set(
+        products
+          .filter(p => p.category === selectedCategory && p.subCategory)
+          .map(p => p.subCategory.trim())
+      )].sort()
+    : [];
+
+  const handleNavClick = () => { resetCategory(); onNavigate?.(); };
+
+  const handleCategoryClick = (cat) => {
+    openSubCategories(cat);
+    if (location.pathname !== '/customer') navigate('/customer');
+  };
+
+  const handleSubCategoryClick = (sub) => {
+    selectSubCategory(sub);
+    if (location.pathname !== '/customer') navigate('/customer');
+    onNavigate?.();
   };
 
   return (
@@ -22,67 +66,117 @@ export default function CustomerSidebar({ onNavigate }) {
         <div className="customer-sidebar-logo">Stationery World</div>
         <div className="customer-sidebar-tagline">Your Marketplace</div>
       </div>
-      <nav>
-        <ul>
-          <li>
-            <NavLink to="/customer" end className={cls} onClick={onNavigate}>
-              <span className="cs-icon">🏠</span> Home
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/customer/you" className={cls} onClick={onNavigate}>
-              <span className="cs-icon">👤</span> You
-            </NavLink>
-          </li>
 
-          {/* Shop By Category — new per §2.2 / §2.4 */}
-          <li className="cs-category-entry">
-            <button
-              className={`cs-category-toggle${categoryOpen ? ' open' : ''}`}
-              onClick={handleCategoryClick}
-              aria-expanded={categoryOpen}
-            >
-              <span className="cs-icon">🗂️</span>
-              <span className="cs-label">Shop By Category</span>
-              <span className="cs-chevron">{categoryOpen ? '▲' : '▾'}</span>
-            </button>
-            <ul className={`cs-subcategory-list${categoryOpen ? ' visible' : ''}`}>
-              {[
-                { key: 'STATIONERY', icon: '✏️' },
-                { key: 'BOOKS',      icon: '📚' },
-                { key: 'TOYS',       icon: '🧸' },
-              ].map(({ key, icon }) => (
+      {/* Sliding panel wrapper */}
+      <div className={`cs-panel-wrapper cs-panel--${sidebarView}`}>
+        <div className="cs-panels-row">
+
+          {/* ══ PANEL 1: MAIN NAV ══ */}
+          <nav className="cs-panel cs-panel-main">
+            <ul>
+              <li>
+                <NavLink to="/customer" end className={cls} onClick={handleNavClick}>
+                  <span className="cs-icon">🏠</span> Home
+                </NavLink>
+              </li>
+              <li>
+                <NavLink to="/customer/you" className={cls} onClick={handleNavClick}>
+                  <span className="cs-icon">👤</span> You
+                </NavLink>
+              </li>
+              <li>
+                <button className="cs-nav-btn cs-shopbycategory-btn" onClick={openCategories}>
+                  <span className="cs-icon">🗂️</span>
+                  <span className="cs-label">Shop By Category</span>
+                  <span className="cs-arrow">›</span>
+                </button>
+              </li>
+              <li>
+                <NavLink to="/customer/wishlist" className={cls} onClick={handleNavClick}>
+                  <span className="cs-icon">❤️</span> Wishlist
+                </NavLink>
+              </li>
+              <li>
+                <NavLink to="/customer/cart" className={cls} onClick={handleNavClick}>
+                  <span className="cs-icon">🛒</span> Cart
+                </NavLink>
+              </li>
+              <li>
+                <NavLink to="/customer/orders" className={cls} onClick={handleNavClick}>
+                  <span className="cs-icon">📦</span> Orders
+                </NavLink>
+              </li>
+            </ul>
+          </nav>
+
+          {/* ══ PANEL 2: CATEGORY CHOOSER ══ */}
+          <nav className="cs-panel cs-panel-categories">
+            <div className="cs-panel-header">
+              <button className="cs-back-btn" onClick={backToMain}>
+                <span className="cs-back-arrow">‹</span> Back
+              </button>
+              <span className="cs-panel-title">Categories</span>
+            </div>
+            <ul className="cs-category-tiles">
+              {Object.entries(CATEGORY_META).map(([key, meta]) => (
                 <li key={key}>
-                  <NavLink
-                    to={`/customer?category=${key}`}
-                    className={cls}
-                    onClick={onNavigate}
+                  <button
+                    className={`cs-category-tile${selectedCategory === key ? ' active' : ''}`}
+                    style={{ '--tile-color': meta.color }}
+                    onClick={() => handleCategoryClick(key)}
                   >
-                    <span className="cs-icon">{icon}</span>
-                    {key.charAt(0) + key.slice(1).toLowerCase()}
-                  </NavLink>
+                    <span className="cs-tile-icon">{meta.icon}</span>
+                    <span className="cs-tile-label">{meta.label}</span>
+                    <span className="cs-arrow">›</span>
+                  </button>
                 </li>
               ))}
             </ul>
-          </li>
+          </nav>
 
-          <li>
-            <NavLink to="/customer/wishlist" className={cls} onClick={onNavigate}>
-              <span className="cs-icon">❤️</span> Wishlist
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/customer/cart" className={cls} onClick={onNavigate}>
-              <span className="cs-icon">🛒</span> Cart
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/customer/orders" className={cls} onClick={onNavigate}>
-              <span className="cs-icon">📦</span> Orders
-            </NavLink>
-          </li>
-        </ul>
-      </nav>
+          {/* ══ PANEL 3: SUBCATEGORY LIST ══ */}
+          <nav className="cs-panel cs-panel-subcategories">
+            <div className="cs-panel-header">
+              <button className="cs-back-btn" onClick={backToCategories}>
+                <span className="cs-back-arrow">‹</span> Back
+              </button>
+              {selectedCategory && (
+                <span className="cs-panel-title" style={{ color: CATEGORY_META[selectedCategory]?.color }}>
+                  {CATEGORY_META[selectedCategory]?.icon} {CATEGORY_META[selectedCategory]?.label}
+                </span>
+              )}
+            </div>
+
+            {subCategories.length === 0 ? (
+              <div className="cs-empty-subcats">No sub-categories yet</div>
+            ) : (
+              <ul className="cs-subcat-list">
+                <li>
+                  <button
+                    className={`cs-subcat-item cs-subcat-all${selectedSubCategory === null ? ' active' : ''}`}
+                    onClick={() => handleSubCategoryClick(null)}
+                  >
+                    <span className="cs-icon">🔍</span>
+                    All {CATEGORY_META[selectedCategory]?.label}
+                  </button>
+                </li>
+                {subCategories.map(sub => (
+                  <li key={sub}>
+                    <button
+                      className={`cs-subcat-item${selectedSubCategory === sub ? ' active' : ''}`}
+                      onClick={() => handleSubCategoryClick(sub)}
+                    >
+                      <span className="cs-subcat-dot">·</span>
+                      {sub}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </nav>
+
+        </div>{/* end cs-panels-row */}
+      </div>{/* end cs-panel-wrapper */}
     </aside>
   );
 }
