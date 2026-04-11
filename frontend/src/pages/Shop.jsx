@@ -225,7 +225,7 @@ export default function Shop() {
       // B. Search mode — always from API, never local/cached
       if (trimmed) {
         const params = new URLSearchParams({
-          search: trimmed, limit: '20', page: '1', _t: ts
+          search: trimmed, limit: '100', page: '1', _t: ts
         });
         if (selectedCategory !== 'All') params.set('category', selectedCategory);
 
@@ -246,7 +246,7 @@ export default function Shop() {
         }
 
         // Fallback to generic search if customer/search not available
-        const fallbackParams = new URLSearchParams({ search: trimmed, limit: '20', _t: ts });
+        const fallbackParams = new URLSearchParams({ search: trimmed, limit: '100', _t: ts });
         if (selectedCategory !== 'All') fallbackParams.set('category', selectedCategory);
         const fbRes = await fetch(
           `${API}/api/products?${fallbackParams}`,
@@ -260,7 +260,7 @@ export default function Shop() {
       }
 
       // C. Browsing with filters / sort — always fresh from customer endpoint
-      const params = new URLSearchParams({ limit: '20', page: '1', _t: ts });
+      const params = new URLSearchParams({ limit: '100', page: '1', _t: ts });
       if (selectedCategory !== 'All') params.set('category', selectedCategory);
       if (sortBy && sortBy !== 'featured') params.set('sortBy', sortBy);
 
@@ -286,7 +286,7 @@ export default function Shop() {
       }
 
       // Final fallback to generic products endpoint
-      const fbParams = new URLSearchParams({ isActive: 'true', limit: '20', _t: ts });
+      const fbParams = new URLSearchParams({ isActive: 'true', limit: '100', _t: ts });
       if (selectedCategory !== 'All') fbParams.set('category', selectedCategory);
       const fbRes = await fetch(`${API}/api/products?${fbParams}`,
         { headers: { 'Cache-Control': 'no-cache', ...(token ? { Authorization: `Bearer ${token}` } : {}) } }
