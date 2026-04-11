@@ -17,6 +17,8 @@ const getImageUrl = (url) => {
 function LowStockTab({ lowList, setLowList, onRestock }) {
   const [loadingRefresh, setLoadingRefresh] = useState(false);
   const [notifyMap,      setNotifyMap]      = useState({});
+  const [lowSearch,      setLowSearch]      = useState('');
+  const [zoomedImg,      setZoomedImg]      = useState(null);
 
   useEffect(() => {
     const fetchNotifyCounts = async () => {
@@ -74,13 +76,31 @@ function LowStockTab({ lowList, setLowList, onRestock }) {
     </div>
   );
 
+  const filteredLow = lowSearch.trim()
+    ? lowList.filter(p => {
+        const q = lowSearch.toLowerCase();
+        return p.name?.toLowerCase().includes(q) ||
+               p.uid?.toLowerCase().includes(q) ||
+               p.category?.toLowerCase().includes(q) ||
+               p.subCategory?.toLowerCase().includes(q);
+      })
+    : lowList;
+
   return (
     <div>
+      {/* Image zoom overlay */}
+      {zoomedImg && (
+        <div className="img-zoom-overlay" onClick={() => setZoomedImg(null)}>
+          <button className="img-zoom-close" onClick={() => setZoomedImg(null)}>×</button>
+          <img src={zoomedImg} alt="Zoomed" className="img-zoom-full" />
+        </div>
+      )}
+
       <div className="lowstock-header">
         <div className="lowstock-header-left">
           <h4 className="lowstock-title">Low Stock Products</h4>
           <span className="lowstock-badge">
-            {lowList.length} alert{lowList.length !== 1 ? 's' : ''}
+            {filteredLow.length} alert{filteredLow.length !== 1 ? 's' : ''}
           </span>
         </div>
         <button onClick={refresh} disabled={loadingRefresh} className="btn outline">
@@ -88,14 +108,33 @@ function LowStockTab({ lowList, setLowList, onRestock }) {
         </button>
       </div>
 
+      <div className="lowstock-search-wrap">
+        <input
+          className="inventory-search"
+          placeholder="🔍 Search low stock by name, UID, category…"
+          value={lowSearch}
+          onChange={e => setLowSearch(e.target.value)}
+        />
+        {lowSearch && (
+          <button className="btn outline lowstock-search-clear" onClick={() => setLowSearch('')}>✕ Clear</button>
+        )}
+      </div>
+
+      {filteredLow.length === 0 && (
+        <div className="inventory-empty" style={{ marginTop: 16 }}>
+          <p>No results for "{lowSearch}"</p>
+        </div>
+      )}
+
       <div className="low-stock-grid">
-        {lowList.map(p => {
+        {filteredLow.map(p => {
           const imgUrl      = getImageUrl(p.images?.[0]?.url);
           const stockPct    = p.lowStockThreshold > 0 ? Math.min(100, (p.totalStock / p.lowStockThreshold) * 100) : 0;
           const isOut       = p.totalStock === 0;
           const urgency     = isOut ? 'critical' : p.totalStock <= Math.floor(p.lowStockThreshold / 2) ? 'high' : 'medium';
           const uc          = urgency === 'critical' ? '#dc2626' : urgency === 'high' ? '#ea580c' : '#d97706';
           const ubg         = urgency === 'critical' ? '#fef2f2' : urgency === 'high' ? '#fff7ed' : '#fffbeb';
+
           const uborder     = urgency === 'critical' ? '#fecaca' : urgency === 'high' ? '#fed7aa' : '#fde68a';
           const uLabel      = isOut ? '🚨 OUT OF STOCK' : urgency === 'high' ? '⚠️ CRITICALLY LOW' : '⚡ LOW STOCK';
           const notifyCount = notifyMap[p.id] || p.notifyMeCount || 0;
@@ -123,7 +162,7 @@ function LowStockTab({ lowList, setLowList, onRestock }) {
             </div>
 
             <div className="low-stock-card-body">
-              <div className="low-stock-card-thumb">
+              <div className="low-stock-card-thumb" onClick={() => imgUrl && setZoomedImg(imgUrl)} style={{ cursor: imgUrl ? 'zoom-in' : 'default' }}>
                 {imgUrl
                   ? <img src={imgUrl} alt={p.name} onError={e => e.target.style.display = 'none'} />
                   : <span style={{ fontSize: 22 }}>📦</span>}
@@ -392,6 +431,7 @@ export default function Inventory() {
   const [selected,       setSelected]       = useState(null);
   const [form,           setForm]           = useState({
     name: '', description: '', category: DEFAULT_CATEGORIES[0], subCategory: '',
+    variantName: '',
     costPrice: '', baseSellingPrice: '', mrp: '', bargainable: true, keywords: '',
     // bargain config fields
     bargainMaxAttempts: 1,
@@ -421,6 +461,7 @@ export default function Inventory() {
   // ── Image manage (per-image replace/append for existing products) ──────────
   const [imgManageMode,  setImgManageMode]  = useState('append');  // 'append' | 'replace'
   const [imgReplacePos,  setImgReplacePos]  = useState(0);
+  const [invZoomedImg,   setInvZoomedImg]   = useState(null);
 
   /* ── file handling ── */
   async function handleFileChange(e) {
@@ -520,6 +561,7 @@ export default function Inventory() {
       name: full.name, description: full.description || '',
       category: full.category || DEFAULT_CATEGORIES[0],
       subCategory: full.subCategory || '',
+      variantName: full.variantName || '',
       costPrice: full.costPrice || '', baseSellingPrice: full.baseSellingPrice || '',
       mrp: full.mrp || '',
       bargainable: !!full.bargainable,
@@ -564,7 +606,7 @@ export default function Inventory() {
       if (selectedFiles.length) imageUrls = await uploadSelectedFiles();
       const payload = {
         name: form.name, description: form.description, category: form.category,
-        subCategory: form.subCategory, costPrice: parseFloat(form.costPrice),
+        subCategory: form.subCategory, variantName: form.variantName || undefined, costPrice: parseFloat(form.costPrice),
         baseSellingPrice: parseFloat(form.baseSellingPrice), bargainable: form.bargainable,
         mrp: form.mrp ? parseFloat(form.mrp) : (form.category === 'TOYS' ? parseFloat(form.baseSellingPrice) * 1.2 : null),
         keywords: form.keywords.split(',').map(s => s.trim()).filter(Boolean),
@@ -590,7 +632,7 @@ export default function Inventory() {
       if (data?.success) {
         alert('✅ Product created successfully!');
         setSearch(''); setResults([]); setMode('add'); setSelected(null); setSelectedFiles([]); setFilePreviews([]);
-        setForm({ name:'', description:'', category: DEFAULT_CATEGORIES[0], subCategory:'', costPrice:'', baseSellingPrice:'', mrp: '', bargainable: true, keywords:'', bargainMaxAttempts:1, bargainTiers:[{price:''},{price:''},{price:''}], bulkDiscounts:[{minQty:'',discount:'',unit:'RUPEES'}], quantityAdded: 0, lowStockThreshold: 10, investmentSource: 'PROFIT' });
+        setForm({ name:'', description:'', category: DEFAULT_CATEGORIES[0], subCategory:'', variantName:'', costPrice:'', baseSellingPrice:'', mrp: '', bargainable: true, keywords:'', bargainMaxAttempts:1, bargainTiers:[{price:''},{price:''},{price:''}], bulkDiscounts:[{minQty:'',discount:'',unit:'RUPEES'}], quantityAdded: 0, lowStockThreshold: 10, investmentSource: 'PROFIT' });
         await refreshAllData();
       } else {
         alert('❌ ' + (data?.message || 'Create failed'));
@@ -610,7 +652,7 @@ export default function Inventory() {
       if (selectedFiles.length) imageUrls = await uploadSelectedFiles();
       const payload = {
         name: form.name, description: form.description, category: form.category,
-        subCategory: form.subCategory, costPrice: parseFloat(form.costPrice),
+        subCategory: form.subCategory, variantName: form.variantName || undefined, costPrice: parseFloat(form.costPrice),
         baseSellingPrice: parseFloat(form.baseSellingPrice), bargainable: form.bargainable,
         mrp: form.mrp ? parseFloat(form.mrp) : (form.category === 'TOYS' ? parseFloat(form.baseSellingPrice) * 1.2 : null),
         keywords: form.keywords.split(',').map(s => s.trim()).filter(Boolean),
@@ -634,7 +676,7 @@ export default function Inventory() {
       if (data?.success) {
         alert('✅ Product updated successfully!');
         setSearch(''); setResults([]); setMode('add'); setSelected(null);
-        setForm({ name:'', description:'', category: DEFAULT_CATEGORIES[0], subCategory:'', costPrice:'', baseSellingPrice:'', mrp: '', bargainable: true, keywords:'', bargainMaxAttempts:1, bargainTiers:[{price:''},{price:''},{price:''}], bulkDiscounts:[{minQty:'',discount:'',unit:'RUPEES'}], quantityAdded: 0, lowStockThreshold: 10, investmentSource: 'PROFIT' });
+        setForm({ name:'', description:'', category: DEFAULT_CATEGORIES[0], subCategory:'', variantName:'', costPrice:'', baseSellingPrice:'', mrp: '', bargainable: true, keywords:'', bargainMaxAttempts:1, bargainTiers:[{price:''},{price:''},{price:''}], bulkDiscounts:[{minQty:'',discount:'',unit:'RUPEES'}], quantityAdded: 0, lowStockThreshold: 10, investmentSource: 'PROFIT' });
         await refreshAllData();
       } else {
         alert('❌ ' + (data?.message || 'Update failed'));
@@ -818,6 +860,14 @@ export default function Inventory() {
   return (
     <div className="inventory-card">
 
+      {/* ── Image Zoom Overlay ── */}
+      {invZoomedImg && (
+        <div className="img-zoom-overlay" onClick={() => setInvZoomedImg(null)}>
+          <button className="img-zoom-close" onClick={() => setInvZoomedImg(null)}>×</button>
+          <img src={invZoomedImg} alt="Zoomed" className="img-zoom-full" />
+        </div>
+      )}
+
       <div className="inventory-header">
         <h3>🏪 Inventory Management</h3>
         <button
@@ -906,8 +956,29 @@ export default function Inventory() {
                       </div>
                       <div className="col">
                         <label>Sub-Category</label>
-                        <input placeholder="e.g., Notebooks, Pens" value={form.subCategory}
+                        <input
+                          placeholder="e.g., Notebooks, Pens"
+                          value={form.subCategory}
+                          list="subcategory-suggestions"
                           onChange={e => setForm(f => ({ ...f, subCategory: e.target.value }))} />
+                        <datalist id="subcategory-suggestions">
+                          {[...new Set(inventoryList.map(p => p.subCategory).filter(Boolean))].sort().map(s => (
+                            <option key={s} value={s} />
+                          ))}
+                        </datalist>
+                      </div>
+                    </div>
+
+                    <div className="row">
+                      <div className="col" style={{ flex: 1 }}>
+                        <label>Variant Display Name <span style={{ fontWeight: 400, fontStyle: 'italic', fontSize: 11 }}>shown in detail modal</span></label>
+                        <input
+                          placeholder="e.g., Green, Large, Gel, Pack of 10"
+                          value={form.variantName}
+                          onChange={e => setForm(f => ({ ...f, variantName: e.target.value }))} />
+                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 3 }}>
+                          This label appears on the variant chip when product is part of a group (e.g. colour name, size, style)
+                        </div>
                       </div>
                     </div>
 
@@ -1070,32 +1141,35 @@ export default function Inventory() {
                           </div>
                         )}
                         {/* Existing images thumbnails */}
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                        <div className="inv-img-grid" style={{ marginTop: 8 }}>
                           {existingImages.map((img, idx) => (
-                            <div key={idx} style={{ position: 'relative', width: 52, height: 52 }}>
+                            <div key={idx} className="inv-img-tile" onClick={() => setInvZoomedImg(getImageUrl(img.url))}>
                               <img src={getImageUrl(img.url)} alt={`img-${idx}`}
-                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, border: idx === 0 ? '2px solid #6366f1' : '1px solid #e5e7eb' }}
                                 onError={e => e.target.style.opacity = '0.3'} />
-                              <span style={{ position: 'absolute', bottom: 1, left: 2, fontSize: 9, background: 'rgba(0,0,0,0.55)', color: '#fff', borderRadius: 3, padding: '0 3px' }}>{idx}</span>
+                              <span className="inv-img-badge">{idx === 0 ? '★' : idx}</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple onChange={handleFileChange} style={{ border: 'none', padding: '6px 0', background: 'transparent' }} />
+                    <label className="inv-upload-btn-label">
+                      <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple onChange={handleFileChange} style={{ display: 'none' }} />
+                      <span className="inv-upload-btn">📎 Choose Images (max 6)</span>
+                    </label>
                     {isCompressing && (
-                      <p style={{ marginTop: 8, color: '#0c5460' }}>Compressing images, please wait…</p>
+                      <p style={{ marginTop: 8, color: '#0c5460' }}>⏳ Compressing images, please wait…</p>
                     )}
                     {fileMessage.text && (
                       <p style={{ marginTop: 8, color: fileMessage.type === 'error' ? '#721c24' : '#155724', backgroundColor: fileMessage.type === 'error' ? '#f8d7da' : '#d4edda', padding: '8px', borderRadius: 6 }}>{fileMessage.text}</p>
                     )}
                     {filePreviews.length > 0 && (
-                      <div className="image-preview">
+                      <div className="inv-img-grid" style={{ marginTop: 10 }}>
                         {filePreviews.map((p, idx) => (
-                          <div key={idx} className="image-wrapper">
-                            <img src={p.url} alt={p.name} />
-                            <button type="button" className="image-remove-btn" onClick={() => removeSelectedFile(idx)}>×</button>
+                          <div key={idx} className="inv-img-tile inv-img-new">
+                            <img src={p.url} alt={p.name} onClick={() => setInvZoomedImg(p.url)} />
+                            <button type="button" className="inv-img-remove" onClick={() => removeSelectedFile(idx)}>×</button>
+                            <span className="inv-img-badge">{idx + 1}</span>
                           </div>
                         ))}
                       </div>
@@ -1201,10 +1275,12 @@ export default function Inventory() {
                   {existingImages.length > 0 && (
                     <div style={{ marginTop: 12 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Existing Images</div>
-                      <div className="image-preview">
-                        {existingImages.slice(0, 4).map((img, idx) => (
-                          <img key={idx} src={getImageUrl(img.url)} alt={`img-${idx}`}
-                            onError={e => e.target.style.display = 'none'} />
+                      <div className="inv-img-grid">
+                        {existingImages.slice(0, 6).map((img, idx) => (
+                          <div key={idx} className="inv-img-tile" onClick={() => setInvZoomedImg(getImageUrl(img.url))}>
+                            <img src={getImageUrl(img.url)} alt={`img-${idx}`} onError={e => e.target.style.display = 'none'} />
+                            <span className="inv-img-badge">{idx === 0 ? '★' : idx}</span>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -1230,13 +1306,17 @@ export default function Inventory() {
                       value={form.baseSellingPrice} onChange={e => setForm(f => ({ ...f, baseSellingPrice: e.target.value }))} />
 
                     <label>Add Images <span style={{ fontWeight: 400, fontStyle: 'italic' }}>optional</span></label>
-                    <input type="file" accept="image/*" multiple onChange={handleFileChange} style={{ border: 'none', padding: '6px 0', background: 'transparent' }} />
+                    <label className="inv-upload-btn-label">
+                      <input type="file" accept="image/*" multiple onChange={handleFileChange} style={{ display: 'none' }} />
+                      <span className="inv-upload-btn">📎 Choose Images</span>
+                    </label>
                     {filePreviews.length > 0 && (
-                      <div className="image-preview">
+                      <div className="inv-img-grid" style={{ marginTop: 10 }}>
                         {filePreviews.map((p, idx) => (
-                          <div key={idx} className="image-wrapper">
-                            <img src={p.url} alt={p.name} />
-                            <button type="button" className="image-remove-btn" onClick={() => removeSelectedFile(idx)}>×</button>
+                          <div key={idx} className="inv-img-tile inv-img-new">
+                            <img src={p.url} alt={p.name} onClick={() => setInvZoomedImg(p.url)} />
+                            <button type="button" className="inv-img-remove" onClick={() => removeSelectedFile(idx)}>×</button>
+                            <span className="inv-img-badge">{idx + 1}</span>
                           </div>
                         ))}
                       </div>
