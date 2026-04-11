@@ -290,3 +290,230 @@
   font-size: 12.5px;
   padding: 9px 14px;
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   SHOP BY CATEGORY — Three-panel sliding sidebar §2.4
+   ═══════════════════════════════════════════════════════════ */
+
+/* Panel wrapper — 3 panels side by side, clips to sidebar width */
+.cs-panel-wrapper {
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Each individual panel — full width */
+.cs-panel {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* The three panels sit inside a row that slides left/right */
+.cs-panels-row {
+  display: flex;
+  width: 300%;
+  transition: transform 0.30s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Override: make wrapper use flex row for sliding */
+.cs-panel-wrapper {
+  overflow: hidden;
+}
+
+/* Technique: translate the three-panel row */
+.cs-panel-wrapper .cs-panels-row { transform: translateX(0%); }
+.cs-panel--categories .cs-panels-row   { transform: translateX(-33.333%); }
+.cs-panel--subcategories .cs-panels-row { transform: translateX(-66.666%); }
+
+/* ── "Shop By Category" button in main nav ── */
+.cs-nav-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--sidebar-text);
+  text-decoration: none;
+  font-weight: 400;
+  font-size: 13.5px;
+  font-family: var(--font-body);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.22s ease, color 0.22s ease,
+              transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+  text-align: left;
+}
+.cs-nav-btn:hover {
+  background: var(--sidebar-hover-bg);
+  color: rgba(245, 235, 210, 0.90);
+  transform: translateX(4px);
+}
+.cs-shopbycategory-btn .cs-label { flex: 1; }
+.cs-arrow {
+  font-size: 16px;
+  opacity: 0.5;
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+.cs-nav-btn:hover .cs-arrow { transform: translateX(3px); opacity: 0.9; }
+
+/* ── Panel header (Back button + title) ── */
+.cs-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 6px;
+}
+.cs-back-btn {
+  background: none;
+  border: none;
+  color: var(--sidebar-text);
+  font-size: 13px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  opacity: 0.7;
+  transition: opacity 0.18s, background 0.18s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.cs-back-btn:hover { opacity: 1; background: rgba(255,255,255,0.07); }
+.cs-back-arrow { font-size: 18px; line-height: 1; }
+.cs-panel-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: rgba(245,235,210,0.9);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Category tiles (3 big buttons) ── */
+.cs-category-tiles {
+  list-style: none;
+  margin: 0;
+  padding: 4px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cs-category-tile {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-left: 3px solid var(--tile-color, #d97706);
+  border-radius: 8px;
+  color: var(--sidebar-text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease, transform 0.22s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s;
+}
+.cs-category-tile:hover {
+  background: rgba(255,255,255,0.09);
+  transform: translateX(4px);
+  border-left-color: var(--tile-color, #d97706);
+}
+.cs-tile-icon { font-size: 20px; flex-shrink: 0; }
+.cs-tile-label { flex: 1; }
+
+/* ── Subcategory list ── */
+.cs-subcat-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: calc(100vh - 220px);
+}
+.cs-subcat-item {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--sidebar-text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.18s ease, color 0.18s, transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  opacity: 0.82;
+}
+.cs-subcat-item:hover {
+  background: var(--sidebar-hover-bg);
+  color: rgba(245,235,210,0.95);
+  transform: translateX(4px);
+  opacity: 1;
+}
+.cs-subcat-item.active {
+  background: rgba(255,255,255,0.10);
+  color: rgba(245,235,210,1);
+  font-weight: 600;
+  opacity: 1;
+}
+.cs-subcat-all { font-weight: 500; opacity: 0.9; }
+.cs-subcat-dot { font-size: 16px; opacity: 0.4; }
+
+.cs-empty-subcats {
+  padding: 20px 14px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  font-style: italic;
+}
+
+/* ── Correct sliding panel implementation ──
+   The wrapper uses overflow:hidden + a fixed height.
+   Three .cs-panel divs sit in a flex row at 300% width.
+   Translated by view state class on the wrapper.           */
+.cs-panel-wrapper {
+  overflow: hidden;
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+/* The three panels row */
+.cs-panels-row {
+  display: flex;
+  flex-direction: row;
+  width: 300%;
+  flex: 1;
+  transition: transform 0.30s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+.cs-panel {
+  width: 33.333%;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+/* Slide positions */
+.cs-panel--main          .cs-panels-row { transform: translateX(0); }
+.cs-panel--categories    .cs-panels-row { transform: translateX(-33.333%); }
+.cs-panel--subcategories .cs-panels-row { transform: translateX(-66.666%); }
