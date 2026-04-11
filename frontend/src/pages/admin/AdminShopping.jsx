@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams, useOutletContext } from 'react-router-dom';
 import { useSearch } from '../../context/SearchContext';
 import { authUtils } from '../../utils/auth';
 
@@ -16,13 +16,15 @@ const CATEGORIES = ['All', 'STATIONERY', 'BOOKS', 'TOYS'];
 const API = API_BASE_URL;
 
 export default function AdminShopping() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [products, setProducts]               = useState([]);
+  const [loading, setLoading]                 = useState(true);
+  const [error, setError]                     = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [sortBy, setSortBy] = useState('featured');
+  const [sortBy, setSortBy]                   = useState('featured');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  // §2.4: Share products with AdminLayout → Sidebar for subCategory derivation
+  const outletCtx = useOutletContext();
   const [activeSearch, setActiveSearch] = useState('');
 
   // Toast / feedback
@@ -42,15 +44,15 @@ export default function AdminShopping() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  // §2.4: If navigated with ?view=categories, scroll to category strip
+  // §2.4: Read ?category=X and ?sub=Y from admin Sidebar panel clicks
+  const urlCategory    = searchParams.get('category');  // 'STATIONERY' | 'BOOKS' | 'TOYS' | null
+  const urlSubCategory = searchParams.get('sub');       // free-text subCategory | null
+
   useEffect(() => {
-    if (searchParams.get('view') === 'categories') {
-      setTimeout(() => {
-        const el = document.getElementById('categories');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }, 300);
+    if (urlCategory && ['STATIONERY', 'BOOKS', 'TOYS'].includes(urlCategory)) {
+      setSelectedCategory(urlCategory);
     }
-  }, [searchParams]);
+  }, [urlCategory]);
 
   // Helper: show toast
   const showToast = (type, msg) => {
@@ -78,7 +80,10 @@ export default function AdminShopping() {
       const result = await res.json();
       if (!result.success) throw new Error(result.message);
       // Keep ALL products in memory for search
-      setProducts(result.data || []);
+      const data = result.data || [];
+      setProducts(data);
+      // §2.4: Share with AdminLayout so Sidebar can derive subCategories
+      outletCtx?.setAdminProducts?.(data);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -279,6 +284,11 @@ export default function AdminShopping() {
       list = list.filter(p => p.category === selectedCategory);
     }
 
+    // §2.4: subCategory filter driven by admin sidebar panel click
+    if (urlSubCategory) {
+      list = list.filter(p => p.subCategory === urlSubCategory);
+    }
+
     if (activeSearch) {
       const words = activeSearch.toLowerCase().split(/\s+/);
       list = list.filter(p =>
@@ -300,7 +310,7 @@ export default function AdminShopping() {
       default: break;
     }
     return list;
-  }, [products, selectedCategory, activeSearch, sortBy]);
+  }, [products, selectedCategory, urlSubCategory, activeSearch, sortBy]);
 
   const featuredProduct = useMemo(() =>
     products.find(p => p.totalStock > 0) || products[0],
@@ -406,7 +416,22 @@ export default function AdminShopping() {
             <div className="products-count">
               Showing {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
               {activeSearch && ` for "${activeSearch}"`}
+              {urlSubCategory && ` in "${urlSubCategory}"`}
             </div>
+            {/* §2.4: SubCategory filter badge */}
+            {urlSubCategory && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 12, background: 'rgba(192,113,79,0.12)', color: '#C0714F', border: '1px solid rgba(192,113,79,0.3)', borderRadius: 20, padding: '3px 12px', fontWeight: 600 }}>
+                  📂 {urlSubCategory}
+                </span>
+                <button
+                  onClick={() => window.history.pushState({}, '', '/admin/shopping')}
+                  style={{ fontSize: 11, background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '2px 6px' }}
+                >
+                  ✕ Clear
+                </button>
+              </div>
+            )}
             <ProductGrid
               products={filteredProducts}
               wishlistIds={wishlistIds}
