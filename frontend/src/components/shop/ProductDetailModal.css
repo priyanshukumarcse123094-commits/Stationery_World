@@ -564,3 +564,106 @@
   .modal-title { font-size: 17px; }
   .modal-price { font-size: 22px; }
 }
+
+/* ══════════════════════════════════════════════════════
+   IMAGE SLIDER  — arrows, dots, counter
+══════════════════════════════════════════════════════ */
+
+/* Prev / Next arrow buttons */
+.img-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.52);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  opacity: 0;                          /* hidden by default */
+  transition: opacity 0.18s ease, background 0.18s ease, transform 0.18s ease;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  flex-shrink: 0;
+}
+
+/* Show arrows on image hover */
+.main-image:hover .img-nav-btn {
+  opacity: 1;
+}
+
+.img-nav-prev { left: 10px;  }
+.img-nav-next { right: 10px; }
+
+.img-nav-btn:hover {
+  background: rgba(0, 0, 0, 0.78);
+  transform: translateY(-50%) scale(1.10);
+}
+.img-nav-prev:hover { transform: translateY(-50%) scale(1.10) translateX(-2px); }
+.img-nav-next:hover { transform: translateY(-50%) scale(1.10) translateX(2px);  }
+
+/* Always show arrows on touch devices (no hover) */
+@media (hover: none) {
+  .img-nav-btn { opacity: 0.75; }
+}
+
+/* Image counter  —  "2 / 5" */
+.img-counter {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.55);
+  color: rgba(255,255,255,0.90);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Dot indicators row at bottom of image */
+.img-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+}
+
+.img-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.40);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.18s ease, transform 0.18s ease;
+  flex-shrink: 0;
+}
+.img-dot.active {
+  background: #fff;
+  transform: scale(1.3);
+}
+.img-dot:hover:not(.active) {
+  background: rgba(255,255,255,0.70);
+}
+
+/* Slide-in animation when image changes */
+.main-image img {
+  animation: imgFadeIn 0.22s ease both;
+}
+@keyframes imgFadeIn {
+  from { opacity: 0.4; transform: scale(0.97); }
+  to   { opacity: 1;   transform: scale(1);    }
+}
