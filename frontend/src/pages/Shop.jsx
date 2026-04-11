@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams, useOutletContext } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useSearch } from '../context/SearchContext';
+import { useCategory } from '../context/CategoryContext';
 import Hero from '../components/shop/Hero';
 import CategoryStrip from '../components/shop/CategoryStrip';
 import ProductGrid from '../components/shop/ProductGrid';
@@ -38,7 +39,7 @@ const useDebounce = (value, delay) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Shop() {
-  const [products, setProducts]               = useState([]);
+  const [products, setProductsState]          = useState([]);
   const [loading, setLoading]                 = useState(true);
   const [error, setError]                     = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -55,15 +56,35 @@ export default function Shop() {
   const location            = useLocation();
   const [searchParams]      = useSearchParams();
 
-  // §2.4: Read ?category=X from CustomerSidebar "Shop By Category" links
+  // §2.4: Share products with CustomerLayout so sidebar can derive subCategories
+  const outletCtx = useOutletContext();
+  const setProducts = useCallback((data) => {
+    setProductsState(data);
+    outletCtx?.setProducts?.(data);
+  }, [outletCtx]);
+
+  // §2.4: Category context from sidebar — drives filtering when sidebar is used
+  const {
+    selectedCategory: sidebarCategory,
+    selectedSubCategory: sidebarSubCategory,
+    sidebarView,
+  } = useCategory() || {};
+
+  // §2.4: When sidebar drives a category selection, sync selectedCategory
+  useEffect(() => {
+    if (sidebarCategory) {
+      setSelectedCategory(sidebarCategory);
+    } else if (sidebarView === 'main') {
+      // Sidebar returned to main — don't force reset, keep toolbar state
+    }
+  }, [sidebarCategory, sidebarView]);
+
+  // §2.4: Remove old ?category= param handler (now driven by context)
+  // Keep it as fallback for direct URL links
   useEffect(() => {
     const cat = searchParams.get('category');
     if (cat && ['STATIONERY', 'BOOKS', 'TOYS'].includes(cat)) {
       setSelectedCategory(cat);
-      setTimeout(() => {
-        const el = document.getElementById('categories');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }, 300);
     }
   }, [searchParams]);
   const [buyNowProduct, setBuyNowProduct]     = useState(null);
@@ -532,13 +553,25 @@ export default function Shop() {
         ) : (
           <>
             <div className="products-count">
-              {isPersonalised && !activeSearch
-                ? `${products.length} personalised picks for you`
-                : `Showing ${products.length} ${products.length === 1 ? 'product' : 'products'}${activeSearch ? ` for "${activeSearch}"` : ''}`
+              {sidebarSubCategory
+                ? `Showing ${products.filter(p => p.subCategory === sidebarSubCategory).length} products in "${sidebarSubCategory}"`
+                : isPersonalised && !activeSearch
+                  ? `${products.length} personalised picks for you`
+                  : `Showing ${products.length} ${products.length === 1 ? 'product' : 'products'}${activeSearch ? ` for "${activeSearch}"` : ''}`
               }
             </div>
+            {/* §2.4: SubCategory filter badge */}
+            {sidebarSubCategory && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 12, background: 'var(--accent-soft, rgba(192,113,79,0.12))', color: 'var(--terra, #C0714F)', border: '1px solid rgba(192,113,79,0.3)', borderRadius: 20, padding: '3px 12px', fontWeight: 600 }}>
+                  {sidebarSubCategory}
+                </span>
+              </div>
+            )}
             <ProductGrid
-              products={products}
+              products={sidebarSubCategory
+                ? products.filter(p => p.subCategory === sidebarSubCategory)
+                : products}
               onAddToCart={handleAddToCart}
               onToggleWishlist={handleToggleWishlist}
               onViewProduct={handleViewProduct}
